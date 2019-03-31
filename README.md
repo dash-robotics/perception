@@ -1,4 +1,4 @@
-# Dash Robotics Perception (Assignment 3)
+# Dash Robotics Perception
 
 ## Setup
 
@@ -8,7 +8,7 @@
 
 ## Usage
 
-### Package: `cuboid_detection`
+### 1. Package: `cuboid_detection`
 
 The package was created with the following command.
 
