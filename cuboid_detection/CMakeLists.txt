@@ -144,6 +144,7 @@ include
 ## ADD YOUR PROGRAMS HERE
 
 # add_executable(${PROJECT_NAME}_node src/cuboid_detection_node.cpp)
+add_executable(example src/example.cpp)
 
 ## <<<<<<<<<<<<<<<<<<<<<<<
 
@@ -164,3 +165,4 @@ include
 # target_link_libraries(${PROJECT_NAME}
 #   ${OpenCV_LIBS}
 # )
+target_link_libraries(example ${catkin_LIBRARIES})
