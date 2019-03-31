@@ -1,9 +1,32 @@
-# perception
-Dash Robotics Perception
+# Dash Robotics Perception (Assignment 3)
 
-## Camera Info Topics
+## Setup
 
-### /camera/color/camera_info
+1. Clone this repository to your `ws/src/` folder.
+2. Run `catkin_make` and `source devel/setup.bash` from your `ws/` folder.
+3. Note that this repository `perception` by itself is not a ROS package.
+
+## Usage
+
+### Package: `cuboid_detection`
+
+The package was created with the following command.
+
+```
+catkin_create_pkg cuboid_detection pcl_ros roscpp sensor_msgs pcl_conversions mage_transport opencv3 cv_bridge
+```
+
+For Assignment 3, we are use the `cuboid_detection` package.
+
+Place the downloaded bag files in `ws/src/perception/cuboid_detection/bags`.
+
+More details on launch files yet to come.
+
+## Notes
+
+### Camera Info Topics (Intel RealSense D435)
+
+#### /camera/color/camera_info
 
 ```
 header: 
@@ -29,7 +52,7 @@ roi:
   do_rectify: False
 ```
 
-### /camera/depth/camera_info
+#### /camera/depth/camera_info
 
 ```
 header: 
