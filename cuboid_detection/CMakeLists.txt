@@ -9,7 +9,7 @@ project(cuboid_detection)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
-  mage_transport
+  image_transport
   opencv3
   pcl_conversions
   pcl_ros
@@ -109,7 +109,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES cuboid_detection
-#  CATKIN_DEPENDS cv_bridge mage_transport opencv3 pcl_conversions pcl_ros roscpp sensor_msgs
+#  CATKIN_DEPENDS cv_bridge image_transport opencv3 pcl_conversions pcl_ros roscpp sensor_msgs
 #  DEPENDS system_lib
 )
 

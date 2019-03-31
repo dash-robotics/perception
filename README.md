@@ -13,7 +13,7 @@
 The package was created with the following command.
 
 ```
-catkin_create_pkg cuboid_detection pcl_ros roscpp sensor_msgs pcl_conversions mage_transport opencv3 cv_bridge
+catkin_create_pkg cuboid_detection pcl_ros roscpp sensor_msgs pcl_conversions image_transport opencv3 cv_bridge
 ```
 
 For Assignment 3, we are use the `cuboid_detection` package.
