@@ -2,10 +2,10 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-L', '--length', default=200, type=int, help='cuboid length (mm)')
-parser.add_argument('-W', '--width', default=100, type=int, help='cuboid width (mm)')
-parser.add_argument('-H', '--height', default=75, type=int, help='cuboid height (mm)')
-parser.add_argument('-d', '--density', default=2, type=float, help='number of points per unit (mm)')
+parser.add_argument('-L', '--length', default=0.2, type=float, help='cuboid length (m)')
+parser.add_argument('-W', '--width', default=0.1, type=float, help='cuboid width (m)')
+parser.add_argument('-H', '--height', default=0.075, type=float, help='cuboid height (m)')
+parser.add_argument('-d', '--density', default=0.002, type=float, help='number of points per unit (m)')
 parser.add_argument('-f', '--filename', default='', type=str, help='output filename')
 args = parser.parse_args()
 
@@ -16,7 +16,7 @@ H = args.height
 
 # Handle filename
 if not args.filename:
-    args.filename = 'template_cuboid_L%d_W%d_H%d.pcd' % (L, W, H)
+    args.filename = 'template_cuboid_L%d_W%d_H%d.pcd' % (L * 1000, W * 1000, H * 1000)
 elif not args.filename.endswith('.pcd'):
     args.filename += '.pcd'
 
