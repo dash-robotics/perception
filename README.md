@@ -25,6 +25,13 @@ For Assignment 3, we are using the `cuboid_detection` package.
 roslaunch cuboid_detection ground_plane_segmentation.launch
 ```
 
+3. To generate template cuboid point cloud files (.pcd), run the following script (run with --help for more details).
+
+```
+cd ws/src/perception/cuboid_detection/templates/
+python make_cuboid.py
+```
+
 ## Notes
 
 ### Camera Info Topics (Intel RealSense D435)
