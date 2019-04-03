@@ -15,24 +15,23 @@ target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
 #include <ros/ros.h>
 // PCL specific includes
 #include <sensor_msgs/PointCloud2.h>
-#include <pcl/conversions.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/transforms.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/extract_indices.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_ros/filters/passthrough.h>
+#include <pcl_ros/filters/voxel_grid.h>
+#include <pcl_ros/filters/extract_indices.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 // Publishers
-ros::Publisher coef_pub;
 ros::Publisher pcl_pub;
+ros::Publisher coef_pub;
 
 // Topics
+bool invert;
+double voxel_size;
 double distance_threshold;
 std::string input_topic;
 std::string output_topic;
@@ -44,13 +43,13 @@ bool debug = false;
 void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
     // Convert the sensor_msgs/PointCloud2 data to pcl/PointCloud
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::fromROSMsg(*input, *cloud_ptr);
+    pcl::PCLPointCloud2::Ptr cloud_ptr(new pcl::PCLPointCloud2);
+    pcl::PCLPointCloud2::Ptr cloud_filtered_ptr(new pcl::PCLPointCloud2);
+    pcl_conversions::toPCL(*input, *cloud_ptr);
     if (debug) std::cerr << "PointCloud before filtering: " << cloud_ptr->width << " " << cloud_ptr->height << " data points." << std::endl;
 
     // Filter the points in z-axis
-    pcl::PassThrough<pcl::PointXYZ> pass;
+    pcl::PassThrough<pcl::PCLPointCloud2> pass;
     pass.setInputCloud(cloud_ptr);
     pass.setFilterFieldName("z");
     pass.setFilterLimits(0.0, 1.4);
@@ -58,34 +57,38 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
     if (debug) std::cerr << "PointCloud after filtering: " << cloud_filtered_ptr->width << " " << cloud_filtered_ptr->height << " data points." << std::endl;
 
     // Downsample the points
-    pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::VoxelGrid<pcl::PointXYZ> voxel;
-    voxel.setInputCloud(cloud_filtered_ptr);
-    voxel.setLeafSize(0.01, 0.01, 0.01);
-    voxel.filter(*voxel_ptr);
+    pcl::PCLPointCloud2::Ptr voxel_ptr(new pcl::PCLPointCloud2);
+    pcl::VoxelGrid<pcl::PCLPointCloud2> downsample;
+    downsample.setInputCloud(cloud_filtered_ptr);
+    downsample.setLeafSize(voxel_size, voxel_size, voxel_size);
+    downsample.filter(*voxel_ptr);
 
     // Setup ground plane segmentation
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
     pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
     pcl::SACSegmentation<pcl::PointXYZ> seg;
 
+    // Convert to the templated PointCloud
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_voxel_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromPCLPointCloud2(*voxel_ptr, *pcl_voxel_ptr);
+
     // Segmentation paramters    
     seg.setOptimizeCoefficients(true);
     seg.setModelType(pcl::SACMODEL_PLANE);
     seg.setMethodType(pcl::SAC_RANSAC);
     seg.setMaxIterations(1000);
-    seg.setDistanceThreshold(0.01);
+    seg.setDistanceThreshold(distance_threshold);
 
     // Segment the largest planar component from the cloud
-    seg.setInputCloud(voxel_ptr);
+    seg.setInputCloud(pcl_voxel_ptr);
     seg.segment(*inliers, *coefficients);
 
     // Extract the inliers
-    pcl::PointCloud<pcl::PointXYZ>::Ptr plane_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::ExtractIndices<pcl::PointXYZ> extract;
+    pcl::PCLPointCloud2::Ptr plane_cloud_ptr(new pcl::PCLPointCloud2);
+    pcl::ExtractIndices<pcl::PCLPointCloud2> extract;
     extract.setInputCloud(voxel_ptr);
     extract.setIndices(inliers);
-    extract.setNegative(true);
+    extract.setNegative(invert);
     extract.filter(*plane_cloud_ptr);
     if (debug) std::cerr << "PointCloud representing the planar component: " << plane_cloud_ptr->width << " " << plane_cloud_ptr->height << " data points." << std::endl;
 
@@ -96,7 +99,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 
     // Convert to ROS data type
     sensor_msgs::PointCloud2 output;
-    pcl::toROSMsg(*plane_cloud_ptr, output);
+    pcl_conversions::fromPCL(*plane_cloud_ptr, output);
     pcl_pub.publish(output);
 }
 
@@ -107,11 +110,28 @@ int main(int argc, char** argv)
     ros::NodeHandle nh("~");
 
     // Get params from launch file
+    nh.getParam("invert", invert);
+    nh.getParam("voxel_size", voxel_size);
     nh.getParam("distance_threshold", distance_threshold);
     nh.getParam("input", input_topic);
     nh.getParam("output", output_topic);
-    nh.getParam("coefficients", coefficients_topic);
+    nh.getParam("plane_coefficients", coefficients_topic);
+
+    // Params defaults
+    nh.param<bool>("invert", invert, true);
+    nh.param<double>("voxel_size", voxel_size, 0.01);
     nh.param<double>("distance_threshold", distance_threshold, 0.01);
+    nh.param<std::string>("input", input_topic, "/camera/depth/color/points");
+    nh.param<std::string>("output", output_topic, "/ground_plane_segmentation/points");
+    nh.param<std::string>("plane_coefficients", coefficients_topic, "/ground_plane_segmentation/coefficients");
+
+    // Display params
+    std::cout << "\nInvert Segmentation: " << invert << std::endl;
+    std::cout << "Voxel Size: " << voxel_size << std::endl;
+    std::cout << "Distance Threshold: " << distance_threshold << std::endl;
+    std::cout << "Input Topic: " << input_topic << std::endl;
+    std::cout << "Output Topic: " << output_topic << std::endl;
+    std::cout << "Co-efficients Topic: " << coefficients_topic << std::endl;
 
     // Create a ROS subscriber for the input point cloud
     ros::Subscriber sub = nh.subscribe(input_topic, 1, callback);

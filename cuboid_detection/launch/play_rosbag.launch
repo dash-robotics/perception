@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <arg name="filename" default="2019-03-23-22-32-55.bag" />
+
+    <!-- Play rosbag file -->
+    <node 
+        pkg="rosbag"
+        type="play"
+        name="player"
+        output="screen"
+        args="--clock --loop $(find cuboid_detection)/bags/$(arg filename)" />
+
+</launch>
