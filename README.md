@@ -16,11 +16,14 @@ The package was created with the following command.
 catkin_create_pkg cuboid_detection pcl_ros roscpp sensor_msgs pcl_conversions image_transport opencv3 cv_bridge
 ```
 
-For Assignment 3, we are use the `cuboid_detection` package.
+For Assignment 3, we are using the `cuboid_detection` package.
 
-Place the downloaded bag files in `ws/src/perception/cuboid_detection/bags`.
+1. Place the downloaded bag files in `ws/src/perception/cuboid_detection/bags`.
+2. To segment the ground plane, run the following (more details within the launch file).
 
-More details on launch files yet to come.
+```
+roslaunch cuboid_detection ground_plane_segmentation.launch
+```
 
 ## Notes
 
