@@ -48,8 +48,11 @@ class image_converter:
 
     ret,thresh = cv2.threshold(mask,200,255,0)
     im, contours,hierarchy= cv2.findContours(thresh, 1, 2)
+
+    c = max(contours, key = cv2.contourArea)
+
     cnt = contours[0]
-    x,y,w,h = cv2.boundingRect(cnt)
+    x,y,w,h = cv2.boundingRect(c)
 
     # Bitwise-AND mask and original image
     # res1 = cv2.bitwise_and(cv_image,cv_image, mask= mask1)
