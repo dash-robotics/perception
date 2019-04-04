@@ -1,3 +1,5 @@
+cuboid_detection/bags/*
+
 # Prerequisites
 *.d
 
