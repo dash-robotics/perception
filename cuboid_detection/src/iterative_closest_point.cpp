@@ -21,6 +21,7 @@ using namespace std;
 ros::Publisher pcl_pub;
 Eigen::Matrix4d icp_transform;
 string template_cuboid_filename;
+sensor_msgs::PointCloud2 output;
 
 // Flags
 bool DEBUG = false;
@@ -46,8 +47,8 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4d Tm)
     transform.setRotation(quaternion);
 
     // Broadcast the transforms
-    tf::TransformBroadcaster br;
-    while (true) br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "cuboid_frame"));
+    static tf::TransformBroadcaster br;
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "cuboid_frame", "camera_depth_frame"));
 }
 
 void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -55,6 +56,8 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     // Compute ICP only once
     if (ICP_SUCCESS)
     {
+        convert_icp_eigen_to_tf(icp_transform);
+        pcl_pub.publish(output);
         return;
     }
 
@@ -78,7 +81,7 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     icp.setInputSource(input_cuboid);
     icp.setInputTarget(template_cuboid);
     icp.align(*output_cloud);
-    icp_transform = icp.getFinalTransformation().cast<double>();
+    icp_transform = icp.getFinalTransformation().cast<double>().inverse();
 
     // Convert ICP results and broadcast TF
     if (icp.hasConverged())
@@ -87,10 +90,9 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
         cerr << "ICP Transform:\n" << icp_transform << endl;
 
         ICP_SUCCESS = true;
-        // convert_icp_eigen_to_tf(icp_transform);
+        convert_icp_eigen_to_tf(icp_transform);
 
         // Convert to ROS data type
-        sensor_msgs::PointCloud2 output;
         pcl::toROSMsg(*output_cloud, output);
         pcl_pub.publish(output);
     }
