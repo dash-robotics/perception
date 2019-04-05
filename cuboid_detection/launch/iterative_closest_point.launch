@@ -3,6 +3,7 @@
 
     <!-- Launch Bounding Box Filter -->
     <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/>
+     <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/>
 
     
     <!-- Run ICP node -->

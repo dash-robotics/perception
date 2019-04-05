@@ -58,6 +58,7 @@ struct planeSegementationOutput
 
 
 pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+bool coefficients_set = false;
 
 void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
 {   
@@ -86,6 +87,7 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
 
 void coefficients_callback(const pcl_msgs::ModelCoefficients& input)
 {
+    coefficients_set = true;
     pcl_conversions::toPCL(input, *coefficients);
 }
 
@@ -154,6 +156,9 @@ pcl::SacModel model, Eigen::Vector3f plane_normal, bool invert_local)
 void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
     // If Model Coefficients have been recieved:
+    if(coefficients_set == false)
+        return;
+    
     Eigen::Vector3f plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
 
     if (debug) ROS_INFO("Got here.");
@@ -225,7 +230,7 @@ int main(int argc, char** argv)
 {
     // Initialize ROS
     ros::init(argc, argv, "surface_normal_estimation");
-    ros::NodeHandle nh("~");
+    ros::NodeHandle nh("~s");
 
     // Get params from launch file
     nh.getParam("invert", invert);
@@ -252,10 +257,12 @@ int main(int argc, char** argv)
     std::cout << "Co-efficients Topic: " << coefficients_topic << std::endl;
 
     // Create a ROS subscriber for the input point cloud
-    ros::Subscriber sub = nh.subscribe(input_topic, 1, callback);
     ros::Subscriber sub_coeff = nh.subscribe("/ground_plane_segmentation/coefficients", 1, coefficients_callback);
+    ros::Subscriber sub = nh.subscribe(input_topic, 1, callback);
 
     // Create a ROS publisher for the normal coefficients
+    pcl_pub = nh.advertise<sensor_msgs::PointCloud2>(output_topic, 1);
+    // coef_pub = nh.advertise<pcl_msgs::ModelCoefficients>(coefficients_topic, 1);
     normal_x_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_x_coefficients", 1);
     normal_y_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_y_coefficients", 1);
     normal_z_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_z_coefficients", 1);
