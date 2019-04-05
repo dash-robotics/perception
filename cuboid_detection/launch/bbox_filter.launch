@@ -3,6 +3,7 @@
 
     <!-- Launch ground plane segmentation -->
     <include file="$(find cuboid_detection)/launch/ground_plane_segmentation.launch"/>
+    <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/>
 
     <!-- Detect 2D bbox -->
     <node

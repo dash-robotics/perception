@@ -80,7 +80,7 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
 
     // Broadcast the transforms
     tf::TransformBroadcaster br;
-    std::cerr<<"Publishing TF"<<std::endl;
+    
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_frame", "cuboid_frame"));
 }
 
@@ -139,9 +139,6 @@ pcl::SacModel model, Eigen::Vector3f plane_normal, bool invert_local)
     pcl::PointCloud<pcl::PointXYZ>::Ptr plane_xyz_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(*plane_cloud_ptr, *plane_xyz_cloud_ptr);
 
-    std::pair<pcl_msgs::ModelCoefficients, pcl::PCLPointCloud2::Ptr> plane_info;
-    plane_info = make_pair(ros_coefficients, plane_cloud_ptr);
-
     Eigen::Vector4f centroid;
     pcl::compute3DCentroid(*plane_xyz_cloud_ptr, centroid);
 
@@ -185,9 +182,12 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
         {
             if(planes[i].num_of_points < planes[j].num_of_points)
             {
+                Eigen::Vector3f temp_normals = normals[i];
                 planeSegementationOutput temp_plane = planes[i];
                 planes[i] = planes[j];
+                normals[i] = normals[j];
                 planes[j] = temp_plane;
+                normals[j] = temp_normals;
             }
         }
     }
@@ -208,6 +208,8 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
             0,0,0,1;
     
     convert_icp_eigen_to_tf(Rt);
+
+    std::cerr<<Rt<<std::endl;
 
     // Convert to ROS data type
     sensor_msgs::PointCloud2 output;
@@ -253,10 +255,7 @@ int main(int argc, char** argv)
     ros::Subscriber sub = nh.subscribe(input_topic, 1, callback);
     ros::Subscriber sub_coeff = nh.subscribe("/ground_plane_segmentation/coefficients", 1, coefficients_callback);
 
-    // Create a ROS publisher for the output segmented point cloud and coefficients
-    pcl_pub = nh.advertise<sensor_msgs::PointCloud2>(output_topic, 1);
-    pcl_pub_top = nh.advertise<sensor_msgs::PointCloud2>(output_topic, 1);
-    coef_pub = nh.advertise<pcl_msgs::ModelCoefficients>(coefficients_topic, 1);
+    // Create a ROS publisher for the normal coefficients
     normal_x_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_x_coefficients", 1);
     normal_y_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_y_coefficients", 1);
     normal_z_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_z_coefficients", 1);
