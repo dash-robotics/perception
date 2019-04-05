@@ -6,22 +6,26 @@ Date: Apr 03, 2019
 
 #include <iostream>
 #include <ros/ros.h>
+#include <tf/tf.h>
+#include <tf/transform_broadcaster.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
+#include <pcl_ros/transforms.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <tf/tf.h>
-#include <tf/transform_broadcaster.h>
 
 using namespace std;
 
 // Globals  
 ros::Publisher pcl_pub;
+ros::Publisher template_pub;
 Eigen::Matrix4d icp_transform;
 string template_cuboid_filename;
-sensor_msgs::PointCloud2 output;
+tf::TransformListener *tf_listener; 
+sensor_msgs::PointCloud2 output_msg;
+sensor_msgs::PointCloud2 template_msg;
 
 // Flags
 bool DEBUG = false;
@@ -48,7 +52,7 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4d Tm)
 
     // Broadcast the transforms
     static tf::TransformBroadcaster br;
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "cuboid_frame", "camera_depth_frame"));
+    // br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "cuboid_frame", "camera_depth_frame"));
 }
 
 void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -57,7 +61,9 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     if (ICP_SUCCESS)
     {
         convert_icp_eigen_to_tf(icp_transform);
-        pcl_pub.publish(output);
+        pcl_pub.publish(output_msg);
+        template_msg.header.frame_id = "camera_depth_optical_frame";
+        template_pub.publish(template_msg);
         return;
     }
 
@@ -80,6 +86,11 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
     icp.setInputSource(input_cuboid);
     icp.setInputTarget(template_cuboid);
+    icp.setMaximumIterations(2000);
+    icp.setTransformationEpsilon(1e-9);
+    // icp.setMaxCorrespondenceDistance(0.05);
+    // icp.setEuclideanFitnessEpsilon(1);
+    // icp.setRANSACOutlierRejectionThreshold(1.5);
     icp.align(*output_cloud);
     icp_transform = icp.getFinalTransformation().cast<double>().inverse();
 
@@ -92,9 +103,14 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
         ICP_SUCCESS = true;
         convert_icp_eigen_to_tf(icp_transform);
 
+        // Publish template point cloud
+        template_msg.header.frame_id = "camera_depth_optical_frame";
+        pcl_pub.publish(output_msg);
+        template_pub.publish(template_msg);
+
         // Convert to ROS data type
-        pcl::toROSMsg(*output_cloud, output);
-        pcl_pub.publish(output);
+        pcl::toROSMsg(*output_cloud, output_msg);
+        pcl::toROSMsg(*template_cuboid, template_msg);
     }
 }
 
@@ -113,6 +129,7 @@ int main(int argc, char **argv)
     
     // Publishers
     pcl_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/aligned_points", 1);
+    template_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/template", 1);
 
     ros::spin();
 }

@@ -8,7 +8,7 @@
     <param
         name="template_cuboid_path"
         type="string"
-        value="$(find cuboid_detection)/templates/template_cuboid_L200_W100_H75.pcd" />
+        value="$(find cuboid_detection)/templates/template_cuboid_L200_W100_H75_3faces.pcd" />
     
     <!-- Run ICP node -->
     <node
