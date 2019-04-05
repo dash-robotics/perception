@@ -146,6 +146,7 @@ include
 # add_executable(${PROJECT_NAME}_node src/cuboid_detection_node.cpp)
 # add_executable(example src/example.cpp)
 add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
+add_executable(surface_normal_estimation src/surface_normal_estimation.cpp)
 
 ## <<<<<<<<<<<<<<<<<<<<<<<
 
@@ -168,3 +169,4 @@ add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
 # )
 # target_link_libraries(example ${catkin_LIBRARIES})
 target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
+target_link_libraries(surface_normal_estimation ${catkin_LIBRARIES})
