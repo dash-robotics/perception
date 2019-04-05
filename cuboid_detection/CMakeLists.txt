@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   roscpp
   sensor_msgs
+  color_object_detection
 )
 
 ## System dependencies are found with CMake's conventions
@@ -146,7 +147,8 @@ include
 # add_executable(${PROJECT_NAME}_node src/cuboid_detection_node.cpp)
 # add_executable(example src/example.cpp)
 add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
-
+add_executable(iterative_closest_point src/iterative_closest_point.cpp)
+add_executable(three_dimension_to_two_dimension src/three_dimension_to_two_dimension.cpp)
 ## <<<<<<<<<<<<<<<<<<<<<<<
 
 ## Rename C++ executable without prefix
@@ -168,3 +170,6 @@ add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
 # )
 # target_link_libraries(example ${catkin_LIBRARIES})
 target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
+target_link_libraries(iterative_closest_point ${catkin_LIBRARIES})
+target_link_libraries(three_dimension_to_two_dimension ${catkin_LIBRARIES})
+

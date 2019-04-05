@@ -1,5 +1,7 @@
 cuboid_detection/bags/*
 
+.vscode/
+
 # Prerequisites
 *.d
 
