@@ -69,9 +69,9 @@ void rawPCL_cb(const sensor_msgs::PointCloud2::ConstPtr& msg)
     icp.setInputTarget(template_cuboid);
     pcl::PointCloud <pcl::PointXYZ> Final;
     icp.align(Final);
-    std::cout << "has converged:" << icp.hasConverged() << " score: " <<
+    std::cerr << "has converged:" << icp.hasConverged() << " score: " <<
               icp.getFitnessScore() << std::endl;
-    std::cout << icp.getFinalTransformation() << std::endl;
+    std::cerr << icp.getFinalTransformation() << std::endl;
     convert_icp_eigen_to_tf(icp.getFinalTransformation());
 }
 
