@@ -56,10 +56,10 @@ void info_cb(const sensor_msgs::CameraInfoConstPtr& camInfo_msg)
 {
     if (READ_INFO)
     {
-        cerr << "\nCamera Info:" << endl;
+        if (DEBUG) cerr << "\nCamera Info:" << endl;
         for (int i = 0; i < 12; i++)
         {
-            cerr << camInfo_msg->P[i] << " ";
+            if (DEBUG) cerr << camInfo_msg->P[i] << " ";
             proj_matrix.push_back(camInfo_msg->P[i]);
         }
         READ_INFO = false;
