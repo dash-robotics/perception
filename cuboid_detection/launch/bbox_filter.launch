@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Launch ground plane segmentation -->
+    <include file="$(find cuboid_detection)/launch/ground_plane_segmentation.launch"/>
+
+    <!-- Detect 2D bbox -->
+    <node
+        pkg="color_object_detection"
+        type="object_detection.py"
+        name="object_detection"
+        output="screen">
+    </node>
+    
+    <!-- Filter points within the bbox -->
+    <node
+        pkg="cuboid_detection"
+        type="bbox_filter"
+        name="bbox_filter"
+        output="screen">
+    </node>
+
+</launch>
