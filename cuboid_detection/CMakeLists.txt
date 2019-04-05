@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   roscpp
   sensor_msgs
+  color_object_detection
 )
 
 ## System dependencies are found with CMake's conventions
@@ -139,16 +140,10 @@ include
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-
-## >>>>>>>>>>>>>>>>>>>>>>>
-## ADD YOUR PROGRAMS HERE
-
-# add_executable(${PROJECT_NAME}_node src/cuboid_detection_node.cpp)
-# add_executable(example src/example.cpp)
 add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
 add_executable(surface_normal_estimation src/surface_normal_estimation.cpp)
-
-## <<<<<<<<<<<<<<<<<<<<<<<
+add_executable(iterative_closest_point src/iterative_closest_point.cpp)
+add_executable(bbox_filter src/bbox_filter.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -161,12 +156,7 @@ add_executable(surface_normal_estimation src/surface_normal_estimation.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
-# target_link_libraries(${PROJECT_NAME}
-#   ${OpenCV_LIBS}
-# )
-# target_link_libraries(example ${catkin_LIBRARIES})
 target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
 target_link_libraries(surface_normal_estimation ${catkin_LIBRARIES})
+target_link_libraries(iterative_closest_point ${catkin_LIBRARIES})
+target_link_libraries(bbox_filter ${catkin_LIBRARIES})
