@@ -1,6 +1,6 @@
 /*
-Author: Avinash
-Version: 1.0.1
+Author: Heethesh Vhavle, Avinash
+Version: 1.0.2
 Date: Apr 03, 2019
 */
 
@@ -24,7 +24,6 @@ ros::Publisher bbox_pub;
 ros::Publisher template_pub;
 Eigen::Matrix4d icp_transform;
 string template_cuboid_filename;
-tf::TransformListener *tf_listener; 
 sensor_msgs::PointCloud2 bbox_msg;
 sensor_msgs::PointCloud2 output_msg;
 sensor_msgs::PointCloud2 template_msg;
