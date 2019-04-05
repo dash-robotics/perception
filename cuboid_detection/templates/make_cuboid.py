@@ -16,7 +16,7 @@ H = args.height
 
 # Handle filename
 if not args.filename:
-    args.filename = 'template_cuboid_L%d_W%d_H%d.pcd' % (L * 1000, W * 1000, H * 1000)
+    args.filename = 'template_cuboid_L%d_W%d_H%d_3faces.pcd' % (L * 1000, W * 1000, H * 1000)
 elif not args.filename.endswith('.pcd'):
     args.filename += '.pcd'
 
@@ -49,13 +49,14 @@ def face(xin, yin):
 column = lambda x: np.full((x[1], 1), x[0])
 
 # Make all 6 faces
-faces = [None] * 6
+faces = [None] * 3
 faces[0] = np.hstack((face(X, Y), column([0, N[2]])))
 faces[1] = np.hstack((face(X, Z)[:, 0], column([0, N[1]]), face(X, Z)[:, 1]))
 faces[2] = np.hstack((column([0, N[0]]), face(Y, Z)[:, 0], face(Y, Z)[:, 1]))
-faces[3] = np.hstack((face(X, Y), column([H, N[2]])))
-faces[4] = np.hstack((face(X, Z)[:, 0], column([W, N[1]]), face(X, Z)[:, 1]))
-faces[5] = np.hstack((column([L, N[0]]), face(Y, Z)[:, 0], face(Y, Z)[:, 1]))
+# faces[3] = np.hstack((face(X, Y), column([H, N[2]])))
+# faces[4] = np.hstack((face(X, Z)[:, 0], column([W, N[1]]), face(X, Z)[:, 1]))
+# faces[5] = np.hstack((column([L, N[0]]), face(Y, Z)[:, 0], face(Y, Z)[:, 1]))
+
 faces = np.vstack(faces)
 
 # Save PCD file

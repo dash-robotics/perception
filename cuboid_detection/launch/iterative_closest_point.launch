@@ -4,11 +4,6 @@
     <!-- Launch Bounding Box Filter -->
     <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/>
 
-    <!-- Template object path for ICP -->
-    <param
-        name="template_cuboid_path"
-        type="string"
-        value="$(find cuboid_detection)/templates/template_cuboid_L200_W100_H75_3faces.pcd" />
     
     <!-- Run ICP node -->
     <node
@@ -16,6 +11,21 @@
         type="iterative_closest_point"
         name="iterative_closest_point"
         output="screen">
+
+        <!-- Template object path for ICP -->
+        <param
+            name="template_cuboid_path"
+            type="string"
+            value="$(find cuboid_detection)/templates/template_cuboid_L200_W75_H100_3faces.pcd" />
+            
+        <!-- Set topics and params -->
+        <rosparam>
+            <!-- Dimensions -->
+            length: 0.2
+            width: 0.075
+            height: 0.1
+        </rosparam>
+
     </node>
 
 </launch>

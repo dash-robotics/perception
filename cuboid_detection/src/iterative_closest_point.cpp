@@ -20,29 +20,73 @@ using namespace std;
 
 // Globals  
 ros::Publisher pcl_pub;
+ros::Publisher bbox_pub;
 ros::Publisher template_pub;
 Eigen::Matrix4d icp_transform;
 string template_cuboid_filename;
 tf::TransformListener *tf_listener; 
+sensor_msgs::PointCloud2 bbox_msg;
 sensor_msgs::PointCloud2 output_msg;
 sensor_msgs::PointCloud2 template_msg;
+double dimensions[3];
 
 // Flags
 bool DEBUG = false;
 bool ICP_SUCCESS = false;
+bool FIRST = true;
 
-void convert_icp_eigen_to_tf(Eigen::Matrix4d Tm)
+void publish_bounding_box(Eigen::Matrix4d H)
+{
+    // Extract cuboid dimensions
+    double l = dimensions[0];
+    double w = dimensions[1];
+    double h = dimensions[2];
+
+    // Create a point cloud from the vertices
+    pcl::PointCloud<pcl::PointXYZ> box_cloud;
+    box_cloud.push_back(pcl::PointXYZ(0, 0, 0));
+    box_cloud.push_back(pcl::PointXYZ(0, 0, h));
+    box_cloud.push_back(pcl::PointXYZ(0, w, 0));
+    box_cloud.push_back(pcl::PointXYZ(0, w, h));
+    box_cloud.push_back(pcl::PointXYZ(l, 0, 0));
+    box_cloud.push_back(pcl::PointXYZ(l, 0, h));
+    box_cloud.push_back(pcl::PointXYZ(l, w, 0));
+    box_cloud.push_back(pcl::PointXYZ(l, w, h));
+
+    // Transform point cloud
+    pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::transformPointCloud(box_cloud, *transformed_cloud, H.cast<float>());
+
+    if (FIRST)
+    {
+        FIRST = false;
+        cout << "Bounding Box Points:" << endl;
+        for (int i = 0; i < transformed_cloud->size(); i++)
+        {
+            cout << "X: " << transformed_cloud->points[i].x << " | "
+                 << "Y: " << transformed_cloud->points[i].y << " | "
+                 << "Z: " << transformed_cloud->points[i].z << endl;
+        }
+    }
+
+    // Convert to ROS data type and publish
+    pcl::toROSMsg(*transformed_cloud, bbox_msg);
+    bbox_msg.header.frame_id = "camera_depth_optical_frame";
+    bbox_pub.publish(bbox_msg);
+}
+
+void convert_icp_eigen_to_tf(Eigen::Matrix4d H)
 {   
     // Set translation
     tf::Vector3 origin;
-    origin.setValue(Tm(0, 3), Tm(1, 3), Tm(2, 3));
+    origin.setValue(H(0, 3), H(1, 3), H(2, 3));
     
     // Set rotation
     tf::Quaternion quaternion;
     tf::Matrix3x3 rotation_matrix;
-    rotation_matrix.setValue(Tm(0, 0), Tm(0, 1), Tm(0, 2),  
-                             Tm(1, 0), Tm(1, 1), Tm(1, 2),  
-                             Tm(2, 0), Tm(2, 1), Tm(2, 2));
+    rotation_matrix.setValue(H(0, 0), H(0, 1), H(0, 2),  
+                             H(1, 0), H(1, 1), H(1, 2),  
+                             H(2, 0), H(2, 1), H(2, 2));
     rotation_matrix.getRotation(quaternion);
 
     // Make tf transform message
@@ -64,6 +108,7 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
         pcl_pub.publish(output_msg);
         template_msg.header.frame_id = "camera_depth_optical_frame";
         template_pub.publish(template_msg);
+        publish_bounding_box(icp_transform);
         return;
     }
 
@@ -90,7 +135,7 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     icp.setTransformationEpsilon(1e-9);
     // icp.setMaxCorrespondenceDistance(0.05);
     // icp.setEuclideanFitnessEpsilon(1);
-    // icp.setRANSACOutlierRejectionThreshold(1.5);
+    icp.setRANSACOutlierRejectionThreshold(1.5);
     icp.align(*output_cloud);
     icp_transform = icp.getFinalTransformation().cast<double>().inverse();
 
@@ -118,17 +163,26 @@ int main(int argc, char **argv)
 {
     // Init node
     ros::init(argc, argv, "iterative_closest_point");
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~");
 
     // Handle params
     nh.getParam("template_cuboid_path", template_cuboid_filename);
-    cerr << "\nTemplate filename: " << template_cuboid_filename;
+    nh.getParam("length", dimensions[0]);
+    nh.getParam("width", dimensions[1]);
+    nh.getParam("height", dimensions[2]);
+
+    // Display params
+    cerr << "\nTemplate filename: " << template_cuboid_filename << endl;
+    cerr << "Length (m): " << dimensions[0] << endl;
+    cerr << "Width (m): " << dimensions[1] << endl;
+    cerr << "Height (m): " << dimensions[2] << endl;
     
     // Subscribers
     ros::Subscriber pcl_sub = nh.subscribe<sensor_msgs::PointCloud2>("/ground_plane_segmentation/points", 1, icp_callback);
     
     // Publishers
     pcl_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/aligned_points", 1);
+    bbox_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/bbox_points", 1);
     template_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/template", 1);
 
     ros::spin();
