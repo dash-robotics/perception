@@ -15,41 +15,37 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
-#include <sensor_msgs/point_cloud_conversion.h>
-#include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 
-
 using namespace std;
 
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 static ros::Publisher icp_transform_pub;
 std::string template_cuboid_filename;
 
 
 void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
 {
-  tf::Vector3 origin;
-  static tf::TransformBroadcaster br;
+    tf::Vector3 origin;
+    static tf::TransformBroadcaster br;
 
-  origin.setValue(static_cast<double>(Tm(0,3)),static_cast<double>(Tm(1,3)),static_cast<double>(Tm(2,3)));
+    origin.setValue(static_cast<double>(Tm(0,3)),static_cast<double>(Tm(1,3)),static_cast<double>(Tm(2,3)));
 
-  cerr << origin << endl;
-  tf::Matrix3x3 tf3d;
-  tf3d.setValue(static_cast<double>(Tm(0,0)), static_cast<double>(Tm(0,1)), static_cast<double>(Tm(0,2)), 
+    cerr << origin << endl;
+    tf::Matrix3x3 tf3d;
+    tf3d.setValue(static_cast<double>(Tm(0,0)), static_cast<double>(Tm(0,1)), static_cast<double>(Tm(0,2)), 
         static_cast<double>(Tm(1,0)), static_cast<double>(Tm(1,1)), static_cast<double>(Tm(1,2)), 
         static_cast<double>(Tm(2,0)), static_cast<double>(Tm(2,1)), static_cast<double>(Tm(2,2)));
 
-  tf::Quaternion tfqt;
-  tf3d.getRotation(tfqt);
+    tf::Quaternion tfqt;
+    tf3d.getRotation(tfqt);
 
-  tf::Transform transform;
-  transform.setOrigin(origin);
-  transform.setRotation(tfqt);
+    tf::Transform transform;
+    transform.setOrigin(origin);
+    transform.setRotation(tfqt);
 
-  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_frame", "cuboid_frame"));
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_frame", "cuboid_frame"));
 }
 
 void rawPCL_cb(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -81,13 +77,13 @@ void rawPCL_cb(const sensor_msgs::PointCloud2::ConstPtr& msg)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc,argv,"iterative_closest_point");
+    ros::init(argc, argv, "iterative_closest_point");
     ros::NodeHandle nh;
-    nh.getParam("template_cuboid_path", template_cuboid_filename);
 
-    ROS_INFO("%s",template_cuboid_filename.c_str());
-    //cerr << template_cuboid_filename << endl;
-    // ros::Subscriber raw_PCL_sub = nh.subscribe<sensor_msgs::PointCloud2>("/ground_plane_segmentation/points", 1000, rawPCL_cb);
+    nh.getParam("template_cuboid_path", template_cuboid_filename);
+    cerr << "\nTemplate filename: " << template_cuboid_filename;
+    
+    ros::Subscriber raw_PCL_sub = nh.subscribe<sensor_msgs::PointCloud2>("/ground_plane_segmentation/points", 1, rawPCL_cb);
     
     ros::spin();
 }

@@ -52,7 +52,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
     pcl::PassThrough<pcl::PCLPointCloud2> pass;
     pass.setInputCloud(cloud_ptr);
     pass.setFilterFieldName("z");
-    pass.setFilterLimits(0.0, 1.4);
+    pass.setFilterLimits(0.0, 0.9);
     pass.filter(*cloud_filtered_ptr);
     if (debug) std::cerr << "PointCloud after filtering: " << cloud_filtered_ptr->width << " " << cloud_filtered_ptr->height << " data points." << std::endl;
 
