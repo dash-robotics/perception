@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Launch Bounding Box Filter -->
+    <!-- <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/> -->
+    
+    <!-- Filter points within the bbox -->
+    <node
+        pkg="cuboid_detection"
+        type="iterative_closest_point"
+        name="iterative_closest_point"
+        output="screen">
+
+         <rosparam>
+            template_cuboid_path: "$(find cuboid_detection)/templates/template_cuboid_L200_W100_H75.pcd"
+        </rosparam>
+    </node>
+
+</launch>
