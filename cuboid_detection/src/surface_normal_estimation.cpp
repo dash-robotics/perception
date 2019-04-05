@@ -80,7 +80,7 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
     transform.setRotation(quaternion);
 
     // Broadcast the transforms
-    tf::TransformBroadcaster br;
+    static tf::TransformBroadcaster br;
     
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_frame", "cuboid_frame"));
 }
