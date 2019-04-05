@@ -82,7 +82,7 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
     // Broadcast the transforms
     static tf::TransformBroadcaster br;
     
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_frame", "cuboid_frame"));
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_optical_frame", "estimated_cuboid_frame"));
 }
 
 void coefficients_callback(const pcl_msgs::ModelCoefficients& input)
