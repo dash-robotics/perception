@@ -10,7 +10,7 @@
         type="string"
         value="$(find cuboid_detection)/templates/template_cuboid_L200_W100_H75.pcd" />
     
-    <!-- Filter points within the bbox -->
+    <!-- Run ICP node -->
     <node
         pkg="cuboid_detection"
         type="iterative_closest_point"
