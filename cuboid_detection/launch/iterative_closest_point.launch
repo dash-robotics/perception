@@ -3,9 +3,10 @@
 
     <!-- Launch Bounding Box Filter -->
     <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/>
-     <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/>
-
     
+    <!-- Launch surface normal estimation -->
+    <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/>
+
     <!-- Run ICP node -->
     <node
         pkg="cuboid_detection"
@@ -26,7 +27,23 @@
             width: 0.075
             height: 0.1
         </rosparam>
+    </node>
 
+    <!-- Display the 3D bounding box -->
+    <node
+        pkg="cuboid_detection"
+        type="draw_bbox.py"
+        name="draw_bbox"
+        output="screen">
+
+        <!-- Set topics and params -->
+        <rosparam>
+            camera_info_topic: "/camera/color/camera_info"
+            image_color_topic: "/camera/color/image_raw"
+            bbox_points_topic: "/icp/bbox_points"
+            extrinsics: "/camera/extrinsics/depth_to_color"
+            output_topic: "/draw_bbox/image"
+        </rosparam>
     </node>
 
 </launch>

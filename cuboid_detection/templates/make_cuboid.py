@@ -35,9 +35,9 @@ DATA ascii
 '''
 
 # Interpolate points
-X = np.arange(0, L, args.density)
-Y = np.arange(0, W, args.density)
-Z = np.arange(0, H, args.density)
+X = np.arange(-L/2.0, L/2.0, args.density)
+Y = np.arange(-W/2.0, W/2.0, args.density)
+Z = np.arange(-H/2.0, H/2.0, args.density)
 N = [Y.shape[0] * Z.shape[0], X.shape[0] * Z.shape[0], X.shape[0] * Y.shape[0]]
 
 # Function to make (N, 1) face points
@@ -50,9 +50,9 @@ column = lambda x: np.full((x[1], 1), x[0])
 
 # Make all 6 faces
 faces = [None] * 3
-faces[0] = np.hstack((face(X, Y), column([0, N[2]])))
-faces[1] = np.hstack((face(X, Z)[:, 0], column([0, N[1]]), face(X, Z)[:, 1]))
-faces[2] = np.hstack((column([0, N[0]]), face(Y, Z)[:, 0], face(Y, Z)[:, 1]))
+faces[0] = np.hstack((face(X, Y), column([-H/2.0, N[2]])))
+faces[1] = np.hstack((face(X, Z)[:, 0], column([-W/2.0, N[1]]), face(X, Z)[:, 1]))
+faces[2] = np.hstack((column([-L/2.0, N[0]]), face(Y, Z)[:, 0], face(Y, Z)[:, 1]))
 # faces[3] = np.hstack((face(X, Y), column([H, N[2]])))
 # faces[4] = np.hstack((face(X, Z)[:, 0], column([W, N[1]]), face(X, Z)[:, 1]))
 # faces[5] = np.hstack((column([L, N[0]]), face(Y, Z)[:, 0], face(Y, Z)[:, 1]))

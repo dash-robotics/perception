@@ -8,13 +8,17 @@ add_compile_options(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  rospy
+  roscpp
+  pcl_ros
+  pcl_conversions
   cv_bridge
   image_transport
-  pcl_conversions
-  pcl_ros
-  roscpp
+  std_msgs
   sensor_msgs
-  color_object_detection
+  geometry_msgs
+  message_generation
+  eigen_conversions
 )
 
 ## System dependencies are found with CMake's conventions
@@ -54,11 +58,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  Rectangle.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -75,10 +78,11 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   sensor_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  sensor_msgs
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -112,7 +116,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES cuboid_detection
- CATKIN_DEPENDS cv_bridge image_transport pcl_conversions pcl_ros roscpp sensor_msgs
+ CATKIN_DEPENDS cv_bridge image_transport pcl_conversions pcl_ros roscpp sensor_msgs rospy std_msgs geometry_msgs message_generation eigen_conversions
  # DEPENDS system_lib
 )
 

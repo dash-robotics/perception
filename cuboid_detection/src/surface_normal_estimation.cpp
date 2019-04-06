@@ -27,6 +27,7 @@ target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
 #include <pcl/common/centroid.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
+#include <geometry_msgs/Pose.h>
 
 // Publishers
 ros::Publisher pcl_pub;
@@ -35,6 +36,7 @@ ros::Publisher coef_pub;
 ros::Publisher normal_x_pub;
 ros::Publisher normal_y_pub;
 ros::Publisher normal_z_pub;
+ros::Publisher pose_pub;
 
 // Topics
 bool invert;
@@ -56,11 +58,10 @@ struct planeSegementationOutput
     int num_of_points;
 };
 
-
 pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
 bool coefficients_set = false;
 
-void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
+void convert_eigen_to_tf(Eigen::Matrix4f Tm)
 {   
     // Set translation
     tf::Vector3 origin;
@@ -79,10 +80,20 @@ void convert_icp_eigen_to_tf(Eigen::Matrix4f Tm)
     transform.setOrigin(origin);
     transform.setRotation(quaternion);
 
+    // Make pose message
+    geometry_msgs::Pose p;
+    p.position.x = Tm(0, 3);
+    p.position.y = Tm(1, 3);
+    p.position.z = Tm(2, 3);
+    p.orientation.x = quaternion.x();
+    p.orientation.y = quaternion.y();
+    p.orientation.z = quaternion.z();
+    p.orientation.w = quaternion.w();
+
     // Broadcast the transforms
     static tf::TransformBroadcaster br;
-    
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_depth_optical_frame", "estimated_cuboid_frame"));
+    pose_pub.publish(p);
 }
 
 void coefficients_callback(const pcl_msgs::ModelCoefficients& input)
@@ -148,23 +159,20 @@ pcl::SacModel model, Eigen::Vector3f plane_normal, bool invert_local)
     plane.leftover_pc = not_plane_cloud_ptr;
     plane.plane_pc = plane_cloud_ptr;
     plane.midpoint = centroid;
-    plane.num_of_points = (int) plane_xyz_cloud_ptr->points.size ();
+    plane.num_of_points = (int) plane_xyz_cloud_ptr->points.size();
 
     return plane;
 }
 
 void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
-    // If Model Coefficients have been recieved:
-    if(coefficients_set == false)
-        return;
+    // If Model Coefficients have been recieved
+    if (coefficients_set == false) return;
     
     Eigen::Vector3f plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
 
-    if (debug) ROS_INFO("Got here.");
     // Convert the sensor_msgs/PointCloud2 data to pcl/PointCloud
     pcl::PCLPointCloud2::Ptr cloud_ptr(new pcl::PCLPointCloud2);
-    pcl::PCLPointCloud2::Ptr cloud_filtered_ptr(new pcl::PCLPointCloud2);
     pcl_conversions::toPCL(*input, *cloud_ptr);
     if (debug) std::cerr << "PointCloud before filtering: " << cloud_ptr->width << " " << cloud_ptr->height << " data points." << std::endl;
     
@@ -173,7 +181,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 
     for(int i = 0; i < 3; i++)
     {
-        if(i==0)
+        if (i == 0)
             planes[i] = getNormal(cloud_ptr, pcl::SACMODEL_PERPENDICULAR_PLANE, plane_normal, invert);
         else
             planes[i] = getNormal(cloud_ptr, pcl::SACMODEL_PARALLEL_PLANE, plane_normal, invert);
@@ -181,9 +189,9 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
         normals[i] << planes[i].plane_normal.values[0], planes[i].plane_normal.values[1], planes[i].plane_normal.values[2];
     }
 
-    for(int i = 0; i< 3; i++)
+    for(int i = 0; i < 3; i++)
     {
-        for(int j = i; j< 3; j++)
+        for(int j = i; j < 3; j++)
         {
             if(planes[i].num_of_points < planes[j].num_of_points)
             {
@@ -204,23 +212,18 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 
     // Projection of midpoint of y,z on z.
     float proj = normals[0].dot(planes[0].midpoint.head<3>() - planes[1].midpoint.head<3>());
-    Eigen::Vector3f centroid = planes[0].midpoint.head<3>() - (proj*normals[0]);
+    Eigen::Vector3f centroid = planes[0].midpoint.head<3>() - (proj * normals[0]);
 
     Eigen::Matrix4f Rt;
     Rt << normals[2](0), normals[1](0), normals[0](0), centroid(0), 
-            normals[2](1), normals[1](1), normals[0](1), centroid(1),
-            normals[2](2), normals[1](2), normals[0](2), centroid(2),
-            0,0,0,1;
+          normals[2](1), normals[1](1), normals[0](1), centroid(1),
+          normals[2](2), normals[1](2), normals[0](2), centroid(2),
+          0, 0, 0, 1;
     
-    convert_icp_eigen_to_tf(Rt);
-
-    std::cerr<<Rt<<std::endl;
+    if (debug) std::cerr << Rt << std::endl;
+    convert_eigen_to_tf(Rt);
 
     // Convert to ROS data type
-    sensor_msgs::PointCloud2 output;
-    pcl_conversions::fromPCL(*cloud_ptr, output);
-    pcl_pub.publish(output);
-    
     normal_x_pub.publish(planes[2].plane_normal);
     normal_y_pub.publish(planes[1].plane_normal);
     normal_z_pub.publish(planes[0].plane_normal);
@@ -230,7 +233,7 @@ int main(int argc, char** argv)
 {
     // Initialize ROS
     ros::init(argc, argv, "surface_normal_estimation");
-    ros::NodeHandle nh("~s");
+    ros::NodeHandle nh("~");
 
     // Get params from launch file
     nh.getParam("invert", invert);
@@ -257,15 +260,15 @@ int main(int argc, char** argv)
     std::cout << "Co-efficients Topic: " << coefficients_topic << std::endl;
 
     // Create a ROS subscriber for the input point cloud
-    ros::Subscriber sub_coeff = nh.subscribe("/ground_plane_segmentation/coefficients", 1, coefficients_callback);
-    ros::Subscriber sub = nh.subscribe(input_topic, 1, callback);
+    ros::Subscriber pcl_sub = nh.subscribe(input_topic, 1, callback);
+    ros::Subscriber coef_sub = nh.subscribe(coefficients_topic, 1, coefficients_callback);
 
     // Create a ROS publisher for the normal coefficients
     pcl_pub = nh.advertise<sensor_msgs::PointCloud2>(output_topic, 1);
-    // coef_pub = nh.advertise<pcl_msgs::ModelCoefficients>(coefficients_topic, 1);
     normal_x_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_x_coefficients", 1);
     normal_y_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_y_coefficients", 1);
     normal_z_pub = nh.advertise<pcl_msgs::ModelCoefficients>("/surface_segmentation/normal_z_coefficients", 1);
+    pose_pub = nh.advertise<geometry_msgs::Pose>("/surface_segmentation/pose", 1);
 
     // Spin
     ros::spin();
