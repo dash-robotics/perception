@@ -44,17 +44,26 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
     // Convert the sensor_msgs/PointCloud2 data to pcl/PointCloud
     pcl::PCLPointCloud2::Ptr cloud_ptr(new pcl::PCLPointCloud2);
+    pcl::PCLPointCloud2::Ptr cloud_filtered_ptr_z(new pcl::PCLPointCloud2);
     pcl::PCLPointCloud2::Ptr cloud_filtered_ptr(new pcl::PCLPointCloud2);
     pcl_conversions::toPCL(*input, *cloud_ptr);
     if (debug) std::cerr << "PointCloud before filtering: " << cloud_ptr->width << " " << cloud_ptr->height << " data points." << std::endl;
 
     // Filter the points in z-axis
+    pcl::PassThrough<pcl::PCLPointCloud2> pass_z;
+    pass_z.setInputCloud(cloud_ptr);
+    pass_z.setFilterFieldName("z");
+    pass_z.setFilterLimits(0.0, 0.9);
+    pass_z.filter(*cloud_filtered_ptr_z);
+    if (debug) std::cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z->width << " " << cloud_filtered_ptr->height << " data points." << std::endl;
+
+    // Filter the points in y-axis
     pcl::PassThrough<pcl::PCLPointCloud2> pass;
-    pass.setInputCloud(cloud_ptr);
-    pass.setFilterFieldName("z");
-    pass.setFilterLimits(0.0, 0.9);
+    pass.setInputCloud(cloud_filtered_ptr_z);
+    pass.setFilterFieldName("x");
+    pass.setFilterLimits(-0.2, 0.2);
     pass.filter(*cloud_filtered_ptr);
-    if (debug) std::cerr << "PointCloud after filtering: " << cloud_filtered_ptr->width << " " << cloud_filtered_ptr->height << " data points." << std::endl;
+    if (debug) std::cerr << "PointCloud after filtering in x-axis: " << cloud_filtered_ptr->width << " " << cloud_filtered_ptr->height << " data points." << std::endl;
 
     // Downsample the points
     pcl::PCLPointCloud2::Ptr voxel_ptr(new pcl::PCLPointCloud2);
