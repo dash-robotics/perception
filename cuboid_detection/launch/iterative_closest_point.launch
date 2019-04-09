@@ -2,10 +2,13 @@
 <launch>
 
     <!-- Launch Bounding Box Filter -->
-    <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/>
+    <!-- <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/> -->
     
     <!-- Launch surface normal estimation -->
-    <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/>
+    <!-- <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/> -->
+
+    <!-- Launch ground plane segmentation -->
+    <include file="$(find cuboid_detection)/launch/ground_plane_segmentation.launch"/>
 
     <!-- Run ICP node -->
     <node
@@ -18,14 +21,14 @@
         <param
             name="template_cuboid_path"
             type="string"
-            value="$(find cuboid_detection)/templates/template_cuboid_L200_W75_H100_3faces.pcd" />
+            value="$(find cuboid_detection)/templates/template_cuboid_L200_W100_H30_3faces.pcd" />
             
         <!-- Set topics and params -->
         <rosparam>
             <!-- Dimensions -->
             length: 0.2
-            width: 0.075
-            height: 0.1
+            width: 0.1
+            height: 0.03
         </rosparam>
     </node>
 
