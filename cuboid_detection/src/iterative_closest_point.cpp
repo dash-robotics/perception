@@ -34,9 +34,10 @@ sensor_msgs::PointCloud2 bbox_msg;
 sensor_msgs::PointCloud2 output_msg;
 sensor_msgs::PointCloud2 template_msg;
 tf::TransformListener *listener;
-double dimensions[3];
 geometry_msgs::Pose pose_msg;
 Eigen::Affine3d pose_transform;
+double dimensions[3];
+double icp_fitness_score;
 
 // Flags
 bool DEBUG = false;
@@ -169,32 +170,32 @@ void icp_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
     icp.setInputSource(input_cuboid);
     icp.setInputTarget(template_cuboid);
-    icp.setMaximumIterations(2000);
+    icp.setMaximumIterations(5000);
     icp.setTransformationEpsilon(1e-9);
     // icp.setMaxCorrespondenceDistance(0.05);
-    // icp.setEuclideanFitnessEpsilon(1);
+    icp.setEuclideanFitnessEpsilon(icp_fitness_score);
     icp.setRANSACOutlierRejectionThreshold(1.5);
     icp.align(*output_cloud);
     icp_transform = icp.getFinalTransformation().cast<double>().inverse();
 
     // Convert ICP results and broadcast TF
-    if (icp.hasConverged())
+    if (icp.hasConverged() && icp.getFitnessScore() < icp_fitness_score)
     {
+        cerr << "\nICP Score: " << icp.getFitnessScore() << endl;
         // Display ICP results
         if (DEBUG || !ICP_SUCCESS)
         {
-            cerr << "\nICP Score: " << icp.getFitnessScore() << endl;
             cerr << "ICP Transform:\n" << icp_transform << endl;
+            ICP_SUCCESS = true;
         }
-        ICP_SUCCESS = true;
 
         // Convert to ROS data type
         pcl::toROSMsg(*output_cloud, output_msg);
         pcl::toROSMsg(*template_cuboid, template_msg);
 
         // Publish template point cloud
-        template_msg.header.frame_id = "camera_depth_optical_frame";
         pcl_pub.publish(output_msg);
+        template_msg.header.frame_id = "camera_depth_optical_frame";
         template_pub.publish(template_msg);
         publish_bounding_box(icp_transform);
         publish_pose(icp_transform);
@@ -212,12 +213,14 @@ int main(int argc, char **argv)
     nh.getParam("length", dimensions[0]);
     nh.getParam("width", dimensions[1]);
     nh.getParam("height", dimensions[2]);
+    nh.getParam("icp_fitness_score", icp_fitness_score);
 
     // Display params
     cerr << "\nTemplate filename: " << template_cuboid_filename << endl;
     cerr << "Length (m): " << dimensions[0] << endl;
     cerr << "Width (m): " << dimensions[1] << endl;
     cerr << "Height (m): " << dimensions[2] << endl;
+    cerr << "ICP Fitness Score:" << icp_fitness_score << endl;
     
     // Subscribers
     ros::Subscriber pcl_sub = nh.subscribe<sensor_msgs::PointCloud2>("/ground_plane_segmentation/points", 1, icp_callback);

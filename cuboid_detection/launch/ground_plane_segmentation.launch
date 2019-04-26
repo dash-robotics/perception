@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
 
-    <!-- Play rosbag file -->
-    <include file="$(find cuboid_detection)/launch/play_rosbag.launch">
-        <arg name="filename" value="2019-04-09-15-43-49.bag" />
-    </include>
-
     <!-- Run a VoxelGrid filter to clean NaNs and downsample the data -->
     <node
         pkg="cuboid_detection"
