@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Run a VoxelGrid filter to clean NaNs and downsample the data -->
+    <node
+        pkg="cuboid_detection"
+        type="ground_plane_segmentation"
+        name="ground_plane_segmentation"
+        output="screen">
+
+        <!-- Set topics and params -->
+        <rosparam>
+            <!-- invert (default: true): True > Box; False > Ground Plane -->
+            invert: true
+            <!-- voxel_size (default: 0.01): Lower the value, denser the point cloud, more CPU -->
+            voxel_size: 0.005
+            <!-- distance_threshold (default: 0.01): Lower the value, more of box + table noise -->
+            distance_threshold: 0.015
+            <!-- Topics -->
+            input: "/camera/depth/color/points"
+            output: "/ground_plane_segmentation/points"
+            plane_coefficients: "/ground_plane_segmentation/coefficients"
+        </rosparam>
+    </node>
+
+</launch>

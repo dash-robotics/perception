@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Play rosbag file -->
+    <!-- <include file="$(find cuboid_detection)/launch/play_rosbag.launch">
+        <arg name="filename" value="2019-04-09-15-43-49.bag" />
+    </include> -->
+
+    <!-- Launch the depth camera -->
+    <!-- <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="enable_pointcloud" value="true"/>
+    </include> -->
+
+    <!-- Launch Bounding Box Filter -->
+    <!-- <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/> -->
+    
+    <!-- Launch surface normal estimation -->
+    <!-- <include file="$(find cuboid_detection)/launch/surface_normal_estimation.launch"/> -->
+
+    <!-- Launch ground plane segmentation -->
+    <include file="$(find cuboid_detection)/launch/ground_plane_segmentation.launch"/>
+
+    <!-- Run ICP node -->
+    <node
+        pkg="cuboid_detection"
+        type="iterative_closest_point"
+        name="iterative_closest_point"
+        output="screen">
+
+        <!-- Template object path for ICP -->
+        <param
+            name="template_cuboid_path"
+            type="string"
+            value="$(find cuboid_detection)/templates/template_cuboid_L200_W100_H30_3faces.pcd" />
+            
+        <!-- Set topics and params -->
+        <rosparam>
+            <!-- Dimensions -->
+            length: 0.2
+            width: 0.1
+            height: 0.03
+            icp_fitness_score: 0.0004
+        </rosparam>
+    </node>
+
+    <!-- Display the 3D bounding box -->
+    <node
+        pkg="cuboid_detection"
+        type="draw_bbox.py"
+        name="draw_bbox"
+        output="screen">
+
+        <!-- Set topics and params -->
+        <rosparam>
+            camera_info_topic: "/camera/color/camera_info"
+            image_color_topic: "/camera/color/image_raw"
+            bbox_points_topic: "/icp/bbox_points"
+            extrinsics: "/camera/extrinsics/depth_to_color"
+            output_topic: "/draw_bbox/image"
+        </rosparam>
+    </node>
+
+    <!-- Run RVIZ -->
+    <node
+        type="rviz"
+        name="rviz"
+        pkg="rviz"
+        args="-d $(find cuboid_detection)/perception.rviz">
+    </node>
+
+</launch>
