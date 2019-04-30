@@ -133,6 +133,7 @@ namespace openface2_ros
 
       camera_sub_ = it_.subscribeCamera(image_topic_, 1, &OpenFace2Ros::process_incoming_, this);
       faces_pub_ = nh_.advertise<Faces>("openface2/faces", 10);
+			head_pose_pub_ = nh_.advertise<geometry_msgs::Pose>("openface2/head_pose",10);
       if(publish_viz_) viz_pub_ = it_.advertise("openface2/image", 1);
       init_openface_();
     }
@@ -339,6 +340,8 @@ namespace openface2_ros
 	            face.head_pose.orientation = toQuaternion(M_PI,  0,  0);//toQuaternion(M_PI / 2, 0, M_PI / 2);// toQuaternion(0, 0, 0);
 	            face.head_pose.orientation = face.head_pose.orientation * head_orientation;
 
+							head_pose_pub_.publish(face.head_pose);
+
 	            // tf
 	            geometry_msgs::TransformStamped transform;
 	            transform.header = faces.header;
@@ -491,11 +494,12 @@ namespace openface2_ros
           		}
           		//ROS_INFO("models %lu active", model);
           		faces.faces.push_back(face);
+							//faces.faces.push_back(face.head_pose); // Publishing only head pose -- Avinash 2019-04-30
         	}
         }
   		//ROS_INFO("faces size %d", faces.face.size());
   		faces.count = (int)faces.faces.size();
-  		faces_pub_.publish(faces);
+  		//faces_pub_.publish(faces);
 
       	if(publish_viz_)
       	{ 
@@ -530,6 +534,7 @@ namespace openface2_ros
     image_transport::ImageTransport it_;
     image_transport::CameraSubscriber camera_sub_;
     Publisher faces_pub_;
+		Publisher head_pose_pub_;
 
     bool publish_viz_;
     image_transport::Publisher viz_pub_;
