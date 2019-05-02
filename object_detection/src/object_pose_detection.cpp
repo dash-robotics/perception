@@ -329,6 +329,11 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pass_z2.filter(*cloud_filtered_ptr_z2);
     if (DEBUG) cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z2->width << " " << cloud_filtered_ptr->height << " data points." << endl;
 
+    // Convert to ROS data type
+    sensor_msgs::PointCloud2 output;
+    pcl_conversions::fromPCL(*cloud_filtered_ptr_z2, output);
+    pcl_pub.publish(output);
+
     // Create the KdTree object for the search method of the extraction
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud_cleaned(new pcl::PointCloud<pcl::PointXYZ>);
@@ -341,7 +346,7 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
     // specify euclidean cluster parameters
     ec.setClusterTolerance(0.02); // 2cm
-    ec.setMinClusterSize(100);
+    ec.setMinClusterSize(200);
     ec.setMaxClusterSize(25000);
     ec.setSearchMethod(tree);
     ec.setInputCloud(pcl_cloud_cleaned);
@@ -374,9 +379,9 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
         // pcl::io::savePCDFile("/home/heethesh/ROS-Workspaces/dash_ws/src/perception/object_detection/templates/clamp.pcd", *object_cluster_pcl, true);
         
         // Convert to ROS data type
-        sensor_msgs::PointCloud2 output;
-        pcl_conversions::fromPCL(*object_cluster, output);
-        pcl_pub.publish(output);
+        // sensor_msgs::PointCloud2 output;
+        // pcl_conversions::fromPCL(*object_cluster, output);
+        // pcl_pub.publish(output);
 
         // Read template point cloud
         string template_filename = template_path + template_filenames[req.object_id];
