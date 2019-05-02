@@ -344,21 +344,21 @@ namespace openface2_ros
   		if(publish_viz_)
   		{ 
     			visualizer.SetObservationLandmarks(face_model.detected_landmarks, face_model.detection_certainty);
-			visualizer.SetObservationPose(LandmarkDetector::GetPose(face_model, fx, fy, cx, cy), face_model.detection_certainty);
+					visualizer.SetObservationPose(LandmarkDetector::GetPose(face_model, fx, fy, cx, cy), face_model.detection_certainty);
     			visualizer.SetObservationGaze(gaze_direction0, gaze_direction1, LandmarkDetector::CalculateAllEyeLandmarks(face_model),eye_landmarks3d, face_model.detection_certainty);
     			visualizer.SetObservationActionUnits(aus_reg, aus_class);
-          	}
+      }
 
   		faces_pub_.publish(face);
 
-      	if(publish_viz_)
-      	{ 
-        	visualizer.SetFps(fps_tracker.GetFPS());
-        	visualizer.ShowObservation();
-        	cv::waitKey(20);
-        	auto viz_msg = cv_bridge::CvImage(img->header, "bgr8", visualizer.GetVisImage()).toImageMsg();
-        	viz_pub_.publish(viz_msg);
-        }
+			if(publish_viz_)
+			{ 
+				visualizer.SetFps(fps_tracker.GetFPS());
+				visualizer.ShowObservation();
+				cv::waitKey(20);
+				auto viz_msg = cv_bridge::CvImage(img->header, "bgr8", visualizer.GetVisImage()).toImageMsg();
+				viz_pub_.publish(viz_msg);
+			}
     }
 
     tf2_ros::TransformBroadcaster tf_br_;

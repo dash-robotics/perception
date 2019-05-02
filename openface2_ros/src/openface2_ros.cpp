@@ -169,7 +169,7 @@ namespace openface2_ros
 
       	// If can't find MTCNN face detector, default to HOG one
       	if (det_parameters[0].curr_face_detector == LandmarkDetector::FaceModelParameters::MTCNN_DETECTOR && face_model.face_detector_MTCNN.empty())
-     	{
+     	  {
         	cout << "INFO: defaulting to HOG-SVM face detector" << endl;
         	det_parameters[0].curr_face_detector = LandmarkDetector::FaceModelParameters::HOG_SVM_DETECTOR;
       	}
@@ -237,285 +237,295 @@ namespace openface2_ros
 
         bool all_models_active = true;
   	    for (unsigned int model = 0; model < face_models.size(); ++model)
-	    {
-			if (!active_models[model])
-			{
-				all_models_active = false;
-			}
-	    }
+				{
+					if (!active_models[model])
+					{
+						all_models_active = false;
+					}
+				}
 
         if(cam->header.seq % rate_ == 0  && !all_models_active)
         {
         	if (det_parameters[0].curr_face_detector == LandmarkDetector::FaceModelParameters::HOG_SVM_DETECTOR)
-			{
-				vector<float> confidences;
-				LandmarkDetector::DetectFacesHOG(face_detections, cv_ptr_mono->image, face_models[0].face_detector_HOG, confidences);
-			}
-			else if (det_parameters[0].curr_face_detector == LandmarkDetector::FaceModelParameters::HAAR_DETECTOR)
-			{
-				LandmarkDetector::DetectFaces(face_detections, cv_ptr_mono->image, face_models[0].face_detector_HAAR);
-			}
-			else
-			{
-				vector<float> confidences;
-				LandmarkDetector::DetectFacesMTCNN(face_detections, cv_ptr_rgb->image, face_models[0].face_detector_MTCNN, confidences);
-			}
+					{
+						vector<float> confidences;
+						LandmarkDetector::DetectFacesHOG(face_detections, cv_ptr_mono->image, face_models[0].face_detector_HOG, confidences);
+					}
+					else if (det_parameters[0].curr_face_detector == LandmarkDetector::FaceModelParameters::HAAR_DETECTOR)
+					{
+						LandmarkDetector::DetectFaces(face_detections, cv_ptr_mono->image, face_models[0].face_detector_HAAR);
+					}
+					else
+					{
+						vector<float> confidences;
+						LandmarkDetector::DetectFacesMTCNN(face_detections, cv_ptr_rgb->image, face_models[0].face_detector_MTCNN, confidences);
+					}
         }
 
         // Keep only non overlapping detections (also convert to a concurrent vector
-	    NonOverlapingDetections(face_models, face_detections);
+	      NonOverlapingDetections(face_models, face_detections);
 
         //ROS_INFO("new face detections %lu", face_detections.size());
         vector<tbb::atomic<bool> > face_detections_used(face_detections.size());
 
-        // Go through every model and update the tracking
-		for (unsigned int model = 0; model < face_models.size(); ++model)
-		{
-
-			bool detection_success = false;
-
-			// If the current model has failed more than 4 times in a row, remove it
-			if (face_models[model].failures_in_a_row > 4)
-			{
-				active_models[model] = false;
-				face_models[model].Reset();
-			}
-
-			// If the model is inactive reactivate it with new detections
-			if (!active_models[model])
-			{
-				for (size_t detection_ind = 0; detection_ind < face_detections.size(); ++detection_ind)
+				// Go through every model and update the tracking
+				for (unsigned int model = 0; model < face_models.size(); ++model)
 				{
-					// if it was not taken by another tracker take it (if it is false swap it to true and enter detection, this makes it parallel safe)
-					if (face_detections_used[detection_ind].compare_and_swap(true, false) == false)
+
+					bool detection_success = false;
+
+					// If the current model has failed more than 4 times in a row, remove it
+					if (face_models[model].failures_in_a_row > 4)
 					{
-
-						// Reinitialise the model
+						active_models[model] = false;
 						face_models[model].Reset();
+					}
 
-						// This ensures that a wider window is used for the initial landmark localisation
-						face_models[model].detection_success = false;
-						detection_success = LandmarkDetector::DetectLandmarksInVideo(cv_ptr_rgb->image, face_detections[detection_ind], face_models[model], det_parameters[model], cv_ptr_mono->image);
+					// If the model is inactive reactivate it with new detections
+					if (!active_models[model])
+					{
+						for (size_t detection_ind = 0; detection_ind < face_detections.size(); ++detection_ind)
+						{
+							// if it was not taken by another tracker take it (if it is false swap it to true and enter detection, this makes it parallel safe)
+							if (face_detections_used[detection_ind].compare_and_swap(true, false) == false)
+							{
 
-						// This activates the model
-						active_models[model] = true;\
-						// break out of the loop as the tracker has been reinitialised
-						break;
+								// Reinitialise the model
+								face_models[model].Reset();
+
+								// This ensures that a wider window is used for the initial landmark localisation
+								face_models[model].detection_success = false;
+								detection_success = LandmarkDetector::DetectLandmarksInVideo(cv_ptr_rgb->image, face_detections[detection_ind], face_models[model], det_parameters[model], cv_ptr_mono->image);
+
+								// This activates the model
+								active_models[model] = true;\
+								// break out of the loop as the tracker has been reinitialised
+								break;
+							}
+						}
+					}
+					else
+					{
+						// The actual facial landmark detection / tracking
+						detection_success = LandmarkDetector::DetectLandmarksInVideo(cv_ptr_rgb->image, face_models[model], det_parameters[model], cv_ptr_mono->image);
 					}
 				}
-			}
-			else
-			{
-				// The actual facial landmark detection / tracking
-				detection_success = LandmarkDetector::DetectLandmarksInVideo(cv_ptr_rgb->image, face_models[model], det_parameters[model], cv_ptr_mono->image);
-			}
-		}
 
-        // Keeping track of FPS
-  	    fps_tracker.AddFrame();
+				// Keeping track of FPS
+				fps_tracker.AddFrame();
 
-        decltype(cv_ptr_rgb->image) viz_img = cv_ptr_rgb->image.clone();
-        if(publish_viz_) visualizer.SetImage(viz_img, fx, fy, cx, cy);
+				decltype(cv_ptr_rgb->image) viz_img = cv_ptr_rgb->image.clone();
+				if(publish_viz_) visualizer.SetImage(viz_img, fx, fy, cx, cy);
 
-        Faces faces;
-        faces.header.frame_id = img->header.frame_id;
-        faces.header.stamp = Time::now();
+				Faces faces;
+				faces.header.frame_id = img->header.frame_id;
+				faces.header.stamp = Time::now();
 
-        // Go through every model and detect eye gaze, record results and visualise the results
-		for (size_t model = 0; model < face_models.size(); ++model)
-		{
-			// Visualising and recording the results
-			if (active_models[model])
-			{
-				// Estimate head pose and eye gaze
-	            Face face;
+				// Go through every model and detect eye gaze, record results and visualise the results
+				for (size_t model = 0; model < face_models.size(); ++model)
+				{
+					// Visualising and recording the results
+					if (active_models[model])
+					{
+						// Estimate head pose and eye gaze
+						Face face;
 
-          	    // Estimate head pose and eye gaze				
-			    cv::Vec6d head_pose = LandmarkDetector::GetPose(face_models[model], fx, fy, cx, cy);
-	            face.head_pose.position.x = head_pose[0];
-	            face.head_pose.position.y = head_pose[1];
-	            face.head_pose.position.z = head_pose[2];
-	          
-	            const auto head_orientation = toQuaternion(head_pose[4], -head_pose[3], -head_pose[5]);
-	            face.head_pose.orientation = toQuaternion(M_PI,  0,  0);//toQuaternion(M_PI / 2, 0, M_PI / 2);// toQuaternion(0, 0, 0);
-	            face.head_pose.orientation = face.head_pose.orientation * head_orientation;
+						// Estimate head pose and eye gaze				
+						cv::Vec6d head_pose = LandmarkDetector::GetPose(face_models[model], fx, fy, cx, cy);
+						face.head_pose.position.x = head_pose[0];
+						face.head_pose.position.y = head_pose[1];
+						face.head_pose.position.z = head_pose[2];
+					
+						const auto head_orientation = toQuaternion(head_pose[4], -head_pose[3], -head_pose[5]);
+						face.head_pose.orientation = toQuaternion(M_PI,  0,  0);//toQuaternion(M_PI / 2, 0, M_PI / 2);// toQuaternion(0, 0, 0);
+						face.head_pose.orientation = face.head_pose.orientation * head_orientation;
 
-							head_pose_pub_.publish(face.head_pose);
 
-	            // tf
-	            geometry_msgs::TransformStamped transform;
-	            transform.header = faces.header;
-	            stringstream out;
-	            out << "head" << model;
-	            transform.child_frame_id = out.str();
-	            transform.transform.translation.x = face.head_pose.position.x / 1000.0;
-	            transform.transform.translation.y = face.head_pose.position.y / 1000.0;
-	            transform.transform.translation.z = face.head_pose.position.z / 1000.0;
-	            transform.transform.rotation = face.head_pose.orientation;
-	            tf_br_.sendTransform(transform);
-          
-          	    const std::vector<cv::Point3f> eye_landmarks3d = LandmarkDetector::Calculate3DEyeLandmarks(face_models[model], fx, fy, cx, cy);
-			    cv::Point3f gaze_direction0(0, 0, 0); cv::Point3f gaze_direction1(0, 0, 0); cv::Vec2d gaze_angle(0, 0);
+						// tf
+						geometry_msgs::TransformStamped transform;
+						transform.header = faces.header;
+						stringstream out;
+						out << "head" << model;
+						transform.child_frame_id = out.str();
+						transform.transform.translation.x = face.head_pose.position.x / 1000.0;
+						transform.transform.translation.y = face.head_pose.position.y / 1000.0;
+						transform.transform.translation.z = face.head_pose.position.z / 1000.0;
+						transform.transform.rotation = face.head_pose.orientation;
+						tf_br_.sendTransform(transform);
+							
+						const std::vector<cv::Point3f> eye_landmarks3d = LandmarkDetector::Calculate3DEyeLandmarks(face_models[model], fx, fy, cx, cy);
+						cv::Point3f gaze_direction0(0, 0, 0);
+						cv::Point3f gaze_direction1(0, 0, 0);
+						cv::Vec2d gaze_angle(0, 0);
 
-          	    // Detect eye gazes
-			    if (face_models[model].detection_success && face_models[model].eye_model)
-          	    {
-            		GazeAnalysis::EstimateGaze(face_models[model], gaze_direction0, fx, fy, cx, cy, true);
-					GazeAnalysis::EstimateGaze(face_models[model], gaze_direction1, fx, fy, cx, cy, false);
+										// Detect eye gazes
+							if (face_models[model].detection_success && face_models[model].eye_model)
+										{
+										GazeAnalysis::EstimateGaze(face_models[model], gaze_direction0, fx, fy, cx, cy, true);
+							GazeAnalysis::EstimateGaze(face_models[model], gaze_direction1, fx, fy, cx, cy, false);
 
-		            gaze_angle = GazeAnalysis::GetGazeAngle(gaze_direction0, gaze_direction1);	
+										gaze_angle = GazeAnalysis::GetGazeAngle(gaze_direction0, gaze_direction1);	
 
-		            face.left_gaze.orientation = toQuaternion(M_PI , 0, 0) * toQuaternion(gaze_direction0.y, -gaze_direction0.x, -gaze_direction0.z);
-		            face.right_gaze.orientation = toQuaternion(M_PI , 0, 0) * toQuaternion(gaze_direction1.y, -gaze_direction1.x, -gaze_direction1.z);
+										face.left_gaze.orientation = toQuaternion(M_PI , 0, 0) * toQuaternion(gaze_direction0.y, -gaze_direction0.x, -gaze_direction0.z);
+										face.right_gaze.orientation = toQuaternion(M_PI , 0, 0) * toQuaternion(gaze_direction1.y, -gaze_direction1.x, -gaze_direction1.z);
 
-		            face.gaze_angle.x = gaze_angle[0];
-		            face.gaze_angle.y = gaze_angle[1];
+										face.gaze_angle.x = gaze_angle[0];
+										face.gaze_angle.y = gaze_angle[1];
 
-		            // Grabbing the pupil location, to determine eye gaze vector, we need to know where the pupil is
-		            cv::Point3f pupil_left(0, 0, 0);
-		            cv::Point3f pupil_right(0, 0, 0);
-		            for (size_t i = 0; i < 8; ++i)
-		            {
-		              pupil_left = pupil_left + eye_landmarks3d[i];
-		              pupil_right = pupil_right + eye_landmarks3d[i + eye_landmarks3d.size()/2];
-		            }
+										// Grabbing the pupil location, to determine eye gaze vector, we need to know where the pupil is
+										cv::Point3f pupil_left(0, 0, 0);
+										cv::Point3f pupil_right(0, 0, 0);
+										for (size_t i = 0; i < 8; ++i)
+										{
+											pupil_left = pupil_left + eye_landmarks3d[i];
+											pupil_right = pupil_right + eye_landmarks3d[i + eye_landmarks3d.size()/2];
+										}
 
-		            pupil_left = pupil_left / 8;
-		            pupil_right = pupil_right / 8;
+										pupil_left = pupil_left / 8;
+										pupil_right = pupil_right / 8;
 
-		            face.left_gaze.position.x = pupil_left.x;
-		            face.left_gaze.position.y = pupil_left.y;
-		            face.left_gaze.position.z = pupil_left.z;
+										face.left_gaze.position.x = pupil_left.x;
+										face.left_gaze.position.y = pupil_left.y;
+										face.left_gaze.position.z = pupil_left.z;
 
-		            face.right_gaze.position.x = pupil_right.x;
-		            face.right_gaze.position.y = pupil_right.y;
-		            face.right_gaze.position.z = pupil_right.z;
+										face.right_gaze.position.x = pupil_right.x;
+										face.right_gaze.position.y = pupil_right.y;
+										face.right_gaze.position.z = pupil_right.z;
 
-		            // tf
-		            stringstream out_left;
-		            out_left << "head" << model << "_left_eye";
-		            transform.child_frame_id = out_left.str();
-		            transform.transform.translation.x = face.left_gaze.position.x / 1000.0;
-		            transform.transform.translation.y = face.left_gaze.position.y / 1000.0;
-		            transform.transform.translation.z = face.left_gaze.position.z / 1000.0;
-		            transform.transform.rotation = face.left_gaze.orientation;
-		            tf_br_.sendTransform(transform);
+										// tf
+										stringstream out_left;
+										out_left << "head" << model << "_left_eye";
+										transform.child_frame_id = out_left.str();
+										transform.transform.translation.x = face.left_gaze.position.x / 1000.0;
+										transform.transform.translation.y = face.left_gaze.position.y / 1000.0;
+										transform.transform.translation.z = face.left_gaze.position.z / 1000.0;
+										transform.transform.rotation = face.left_gaze.orientation;
+										tf_br_.sendTransform(transform);
 
-		            stringstream out_right;
-		            out_right << "head" << model << "_right_eye";
-		            transform.child_frame_id = out_right.str();
-		            transform.transform.translation.x = face.right_gaze.position.x / 1000.0;
-		            transform.transform.translation.y = face.right_gaze.position.y / 1000.0;
-		            transform.transform.translation.z = face.right_gaze.position.z / 1000.0;
-		            transform.transform.rotation = face.right_gaze.orientation;
-		            tf_br_.sendTransform(transform);
-          		}
-       
-  	            //extract facial landmarks
-      		    const auto &landmarks = face_models[model].detected_landmarks;
-          		for(unsigned i = 0; i < face_models[model].pdm.NumberOfPoints(); ++i)
-          		{
-            		geometry_msgs::Point p;
-            		p.x = landmarks.at<float>(i);
-            		p.y = landmarks.at<float>(face_models[model].pdm.NumberOfPoints() + i);
-            		face.landmarks_2d.push_back(p);
-          		}
+										stringstream out_right;
+										out_right << "head" << model << "_right_eye";
+										transform.child_frame_id = out_right.str();
+										transform.transform.translation.x = face.right_gaze.position.x / 1000.0;
+										transform.transform.translation.y = face.right_gaze.position.y / 1000.0;
+										transform.transform.translation.z = face.right_gaze.position.z / 1000.0;
+										transform.transform.rotation = face.right_gaze.orientation;
+										tf_br_.sendTransform(transform);
+									}
+					
+										//extract facial landmarks
+									const auto &landmarks = face_models[model].detected_landmarks;
+									for(unsigned i = 0; i < face_models[model].pdm.NumberOfPoints(); ++i)
+									{
+										geometry_msgs::Point p;
+										p.x = landmarks.at<float>(i);
+										p.y = landmarks.at<float>(face_models[model].pdm.NumberOfPoints() + i);
+										face.landmarks_2d.push_back(p);
+									}
 
-	            cv::Mat_<double> shape_3d = face_models[model].GetShape(fx, fy, cx, cy);
-          		for(unsigned i = 0; i < face_models[model].pdm.NumberOfPoints(); ++i)
-          		{
-            		geometry_msgs::Point p;
-            		p.x = shape_3d.at<double>(i);
-            		p.y = shape_3d.at<double>(face_models[model].pdm.NumberOfPoints() + i);
-            		p.z = shape_3d.at<double>(face_models[model].pdm.NumberOfPoints() * 2 + i);
-            		face.landmarks_3d.push_back(p);
-          		}
+									cv::Mat_<double> shape_3d = face_models[model].GetShape(fx, fy, cx, cy);
+									for(unsigned i = 0; i < face_models[model].pdm.NumberOfPoints(); ++i)
+									{
+										geometry_msgs::Point p;
+										p.x = shape_3d.at<double>(i);
+										p.y = shape_3d.at<double>(face_models[model].pdm.NumberOfPoints() + i);
+										p.z = shape_3d.at<double>(face_models[model].pdm.NumberOfPoints() * 2 + i);
+										face.landmarks_3d.push_back(p);
+									}
 
-	            // Face analysis step
-	  	   		//cv::Mat sim_warped_img;
-		  		//cv::Mat_<double> hog_descriptor; int num_hog_rows = 0, num_hog_cols = 0;
+									// Face analysis step
+									//cv::Mat sim_warped_img;
+									//cv::Mat_<double> hog_descriptor; int num_hog_rows = 0, num_hog_cols = 0;
 
-          		face_analyser.PredictStaticAUsAndComputeFeatures(cv_ptr_rgb->image, face_models[model].detected_landmarks);
-          		//face_analyser.GetLatestAlignedFace(sim_warped_img);
-          		//face_analyser.GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
+									face_analyser.PredictStaticAUsAndComputeFeatures(cv_ptr_rgb->image, face_models[model].detected_landmarks);
+									//face_analyser.GetLatestAlignedFace(sim_warped_img);
+									//face_analyser.GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
 
-          		auto aus_reg = face_analyser.GetCurrentAUsReg();
-          		auto aus_class = face_analyser.GetCurrentAUsClass();
-        
-          		unordered_map<string, ActionUnit> aus;
-          		for(const auto &au_reg : aus_reg)
-          		{
-            		auto it = aus.find(get<0>(au_reg));
-            		if(it == aus.end())
-            		{
-              			ActionUnit u;
-              			u.name = get<0>(au_reg);
-              			u.intensity = get<1>(au_reg);
-              			aus.insert({ get<0>(au_reg), u});
-              			continue;
-            		}
-            		it->second.intensity = get<1>(au_reg);
-          		}
+									auto aus_reg = face_analyser.GetCurrentAUsReg();
+									auto aus_class = face_analyser.GetCurrentAUsClass();
+						
+									unordered_map<string, ActionUnit> aus;
+									for(const auto &au_reg : aus_reg)
+									{
+										auto it = aus.find(get<0>(au_reg));
+										if(it == aus.end())
+										{
+												ActionUnit u;
+												u.name = get<0>(au_reg);
+												u.intensity = get<1>(au_reg);
+												aus.insert({ get<0>(au_reg), u});
+												continue;
+										}
+										it->second.intensity = get<1>(au_reg);
+									}
 
-          		for(const auto &au_class : aus_class)
-          		{
-            		auto it = aus.find(get<0>(au_class));
-            		if(it == aus.end())
-            		{
-              			ActionUnit u;
-              			u.name = get<0>(au_class);
-              			u.presence = get<1>(au_class);
-              			aus.insert({ get<0>(au_class), u});
-          			continue;
-            		}
-            		it->second.presence = get<1>(au_class);
-          		}
+									for(const auto &au_class : aus_class)
+									{
+										auto it = aus.find(get<0>(au_class));
+										if(it == aus.end())
+										{
+												ActionUnit u;
+												u.name = get<0>(au_class);
+												u.presence = get<1>(au_class);
+												aus.insert({ get<0>(au_class), u});
+										continue;
+										}
+										it->second.presence = get<1>(au_class);
+									}
 
-          		for(const auto &au : aus) face.action_units.push_back(get<1>(au));
+									for(const auto &au : aus) face.action_units.push_back(get<1>(au));
 
-          		Point min(100000, 100000);
-          		Point max(0, 0);
-          		for(const auto &p : face.landmarks_2d)
-          		{
-            		if(p.x < min.x) min.x = p.x;
-            		if(p.y < min.y) min.y = p.y;
-            		if(p.x > max.x) max.x = p.x;
-            		if(p.y > max.y) max.y = p.y;
-          		}
+									Point min(100000, 100000);
+									Point max(0, 0);
+									for(const auto &p : face.landmarks_2d)
+									{
+										if(p.x < min.x) min.x = p.x;
+										if(p.y < min.y) min.y = p.y;
+										if(p.x > max.x) max.x = p.x;
+										if(p.y > max.y) max.y = p.y;
+									}
 
-          		if(publish_viz_)
-          		{ 
-            		//visualizer.SetObservationFaceAlign(sim_warped_img);
-            		//visualizer.SetObservationHOG(hog_descriptor, num_hog_rows, num_hog_cols);
-            		visualizer.SetObservationLandmarks(face_models[model].detected_landmarks, face_models[model].detection_certainty);
-            		visualizer.SetObservationPose(LandmarkDetector::GetPose(face_models[model], fx, fy, cx, cy), face_models[model].detection_certainty);
-            		visualizer.SetObservationGaze(gaze_direction0, gaze_direction1, LandmarkDetector::CalculateAllEyeLandmarks(face_models[model]),eye_landmarks3d, face_models[model].detection_certainty);
-            		visualizer.SetObservationActionUnits(aus_reg, aus_class);
-          		}
-          		//ROS_INFO("models %lu active", model);
-          		faces.faces.push_back(face);
-							//faces.faces.push_back(face.head_pose); // Publishing only head pose -- Avinash 2019-04-30
-        	}
-        }
-  		//ROS_INFO("faces size %d", faces.face.size());
-  		faces.count = (int)faces.faces.size();
-  		//faces_pub_.publish(faces);
+									if(publish_viz_)
+									{ 
+										//visualizer.SetObservationFaceAlign(sim_warped_img);
+										//visualizer.SetObservationHOG(hog_descriptor, num_hog_rows, num_hog_cols);
+										visualizer.SetObservationLandmarks(face_models[model].detected_landmarks, face_models[model].detection_certainty);
+										visualizer.SetObservationPose(LandmarkDetector::GetPose(face_models[model], fx, fy, cx, cy), face_models[model].detection_certainty);
+										visualizer.SetObservationGaze(gaze_direction0, gaze_direction1, LandmarkDetector::CalculateAllEyeLandmarks(face_models[model]),eye_landmarks3d, face_models[model].detection_certainty);
+										visualizer.SetObservationActionUnits(aus_reg, aus_class);
 
-      	if(publish_viz_)
-      	{ 
-        	visualizer.SetFps(fps_tracker.GetFPS());
-        	visualizer.ShowObservation();
-        	cv::waitKey(20);
-        	auto viz_msg = cv_bridge::CvImage(img->header, "bgr8", visualizer.GetVisImage()).toImageMsg();
-        	viz_pub_.publish(viz_msg);
-        }
-    }
+										for ( auto it = aus_reg.begin(); it != aus_reg.end(); it++ )
+										{										
+											if(it->first.compare("AU02")==0 && it->second > 2.5)
+											{
+												face.head_pose.position.z = transform.transform.translation.z;
+												head_pose_pub_.publish(face.head_pose);
+											}
+										}
+									}
+									//ROS_INFO("models %lu active", model);
+									faces.faces.push_back(face);
+									//faces.faces.push_back(face.head_pose); // Publishing only head pose -- Avinash 2019-04-30
+							}
+						}
+					//ROS_INFO("faces size %d", faces.face.size());
+					faces.count = (int)faces.faces.size();
+					//faces_pub_.publish(faces);
 
-    tf2_ros::TransformBroadcaster tf_br_;
+					if(publish_viz_)
+					{ 
+						visualizer.SetFps(fps_tracker.GetFPS());
+						visualizer.ShowObservation();
+						cv::waitKey(20);
+						auto viz_msg = cv_bridge::CvImage(img->header, "bgr8", visualizer.GetVisImage()).toImageMsg();
+						viz_pub_.publish(viz_msg);
+					}
+				}
+ 
+			  tf2_ros::TransformBroadcaster tf_br_;
     
     // The modules that are being used for tracking
-	vector<LandmarkDetector::CLNF> face_models;
-	vector<bool> active_models;
+		vector<LandmarkDetector::CLNF> face_models;
+		vector<bool> active_models;
     vector<LandmarkDetector::FaceModelParameters> det_parameters;
 
     FaceAnalysis::FaceAnalyser face_analyser;
@@ -535,6 +545,7 @@ namespace openface2_ros
     image_transport::CameraSubscriber camera_sub_;
     Publisher faces_pub_;
 		Publisher head_pose_pub_;
+		//ServiceServer open_face_service = nh_.advertiseService("Open_Face_Pose", head_pose_server);
 
     bool publish_viz_;
     image_transport::Publisher viz_pub_;

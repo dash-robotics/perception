@@ -1,4 +1,6 @@
 cuboid_detection/bags/*
+openface2_ros/rosbags/*
+
 
 .vscode/
 
@@ -171,3 +173,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#vs-code
+.code-workspace
