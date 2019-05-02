@@ -76,7 +76,7 @@ sensor_msgs::PointCloud2 template_msg;
 tf::TransformListener* listener;
 geometry_msgs::Pose pose_msg;
 Eigen::Affine3d pose_transform;
-double dimensions[] = { 0.1, 0.02, 0.02 };
+double dimensions[] = { 0.02, 0.15, 0.02 };
 double icp_fitness_score;
 pcl::PCLPointCloud2::Ptr input_pcl(new pcl::PCLPointCloud2);
 
