@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Play rosbag file -->
+    <include file="$(find object_detection)/launch/play_rosbag.launch">
+        <arg name="filename" value="all-01.bag" />
+    </include>
+
+    <!-- Launch the depth camera -->
+    <!-- <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="enable_pointcloud" value="true"/>
+    </include> -->
+
+    <!-- Launch Bounding Box Filter -->
+    <!-- <include file="$(find object_detection)/launch/bbox_filter.launch"/> -->
+    
+    <!-- Launch surface normal estimation -->
+    <!-- <include file="$(find object_detection)/launch/surface_normal_estimation.launch"/> -->
+
+    <!-- Launch ground plane segmentation -->
+    <include file="$(find object_detection)/launch/ground_plane_segmentation.launch"/>
+
+    <!-- Launch ICP -->
+    <!-- <include file="$(find object_detection)/launch/iterative_closest_point.launch"/> -->
+
+    <!-- Display the 3D bounding box -->
+    <!-- <node
+        pkg="object_detection"
+        type="draw_bbox.py"
+        name="draw_bbox"
+        output="screen">
+
+        <rosparam>
+            camera_info_topic: "/camera/color/camera_info"
+            image_color_topic: "/camera/color/image_raw"
+            bbox_points_topic: "/icp/bbox_points"
+            extrinsics: "/camera/extrinsics/depth_to_color"
+            output_topic: "/draw_bbox/image"
+        </rosparam>
+    </node> -->
+
+    <!-- Run RVIZ -->
+    <node
+        type="rviz"
+        name="rviz"
+        pkg="rviz"
+        args="-d $(find object_detection)/perception.rviz">
+    </node>
+
+</launch>

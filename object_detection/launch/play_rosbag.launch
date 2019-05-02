@@ -9,6 +9,6 @@
         type="play"
         name="player"
         output="screen"
-        args="--clock --loop $(find cuboid_detection)/bags/$(arg filename)" />
+        args="--clock --loop --quiet $(find object_detection)/bags/$(arg filename)" />
 
 </launch>
