@@ -66,8 +66,9 @@ string input_topic;
 string output_topic;
 string coefficients_topic;
 
+int argmin = -1;
 Eigen::Matrix4d icp_transform;
-string template_cuboid_filename;
+vector<Eigen::Matrix4d> icp_transforms;
 sensor_msgs::PointCloud2 bbox_msg;
 sensor_msgs::PointCloud2 output_msg;
 sensor_msgs::PointCloud2 template_msg;
@@ -77,6 +78,11 @@ Eigen::Affine3d pose_transform;
 double dimensions[3];
 double icp_fitness_score;
 pcl::PCLPointCloud2::Ptr input_pcl(new pcl::PCLPointCloud2);
+
+// Template paths
+string template_path;
+string template_filenames[] = {"", "screwdriver_ascii_tf.pcd", "eraser_ascii_tf.pcd",
+                               "clamp_ascii_tf.pcd", "marker_ascii_tf.pcd"};
 
 // Flags
 bool DEBUG = false;
@@ -141,17 +147,13 @@ void publish_bounding_box(Eigen::Matrix4d H)
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::transformPointCloud(box_cloud, *transformed_cloud, H.cast<float>());
 
-    if (FIRST)
-    {
-        FIRST = false;
-        cout << "Bounding Box Points:" << endl;
-        for (int i = 0; i < transformed_cloud->size(); i++)
-        {
-            cout << "X: " << transformed_cloud->points[i].x << " | "
-                 << "Y: " << transformed_cloud->points[i].y << " | "
-                 << "Z: " << transformed_cloud->points[i].z << endl;
-        }
-    }
+    // cout << "Bounding Box Points:" << endl;
+    // for (int i = 0; i < transformed_cloud->size(); i++)
+    // {
+    //     cout << "X: " << transformed_cloud->points[i].x << " | "
+    //          << "Y: " << transformed_cloud->points[i].y << " | "
+    //          << "Z: " << transformed_cloud->points[i].z << endl;
+    // }
 
     // Convert to ROS data type and publish
     pcl::toROSMsg(*transformed_cloud, bbox_msg);
@@ -159,8 +161,9 @@ void publish_bounding_box(Eigen::Matrix4d H)
     bbox_pub.publish(bbox_msg);
 }
 
-void icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl)
+double icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl)
 {
+    int max_iter = 0;
     while (1)
     {
         // Point cloud containers
@@ -176,21 +179,22 @@ void icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::PointC
         icp.setEuclideanFitnessEpsilon(icp_fitness_score);
         icp.setRANSACOutlierRejectionThreshold(1.5);
         icp.align(*output_cloud);
-        icp_transform = icp.getFinalTransformation().cast<double>().inverse();
+        Eigen::Matrix4d icp_transform_local = icp.getFinalTransformation().cast<double>().inverse();
+        icp_transforms.push_back(icp_transform_local);
 
         cerr << "ICP Score Before: " << icp.getFitnessScore() << endl;
+        max_iter++;
 
-        if (icp.hasConverged() && icp.getFitnessScore() < icp_fitness_score)
+        if ((icp.hasConverged() && icp.getFitnessScore() < icp_fitness_score) || (max_iter > 10))
         {
             // Display ICP results
             cerr << "\nICP Score: " << icp.getFitnessScore() << endl;
-            cerr << "ICP Transform:\n" << icp_transform << endl;
+            cerr << "ICP Transform:\n" << icp_transform_local << endl;
 
             // Convert to ROS data type
             pcl::toROSMsg(*output_cloud, output_msg);
             pcl::toROSMsg(*template_pcl, template_msg);
-            ICP_SUCCESS = true;
-            return;
+            return icp.getFitnessScore();
         }
     }
 }
@@ -202,7 +206,7 @@ void pcl_callback(const sensor_msgs::PointCloud2ConstPtr& input)
     if (DEBUG) cerr << "PointCloud before filtering: " << input_pcl->width << " " << input_pcl->height << " data points." << endl;
 
     // Publish template point cloud
-    if (ICP_SUCCESS)
+    if (ICP_SUCCESS and argmin != -1)
     {
         icp_pub.publish(output_msg);
         template_msg.header.frame_id = "camera_depth_optical_frame";
@@ -274,7 +278,7 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pcl::PassThrough<pcl::PCLPointCloud2> pass_z2;
     pass_z2.setInputCloud(plane_cloud_ptr);
     pass_z2.setFilterFieldName("z");
-    pass_z2.setFilterLimits(0.0, 0.7);
+    pass_z2.setFilterLimits(0.0, 0.75);
     pass_z2.filter(*cloud_filtered_ptr_z2);
     if (DEBUG) cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z2->width << " " << cloud_filtered_ptr->height << " data points." << endl;
 
@@ -298,10 +302,15 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     ec.extract(object_cluster_indices);
 
     // Display number of objects detceted
+    cerr << "\nRequested Object: " << template_filenames[req.object_id] << endl;
     cerr << "Objects Detected: " << object_cluster_indices.size() << endl;
-    int obj_id = 1;
 
-    // What is this?
+    // Find the best registered object
+    int obj_id = req.object_id;
+    vector<double> icp_scores;
+    icp_transforms.clear();
+    ICP_SUCCESS = false;
+
     for (vector<pcl::PointIndices>::const_iterator it = object_cluster_indices.begin(); it != object_cluster_indices.end(); ++it)
     {
         // Create a pcl object to hold the extracted cluster
@@ -323,7 +332,7 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
         pcl_pub.publish(output);
 
         // Read template point cloud
-        string template_filename = "/home/heethesh/ROS-Workspaces/dash_ws/src/perception/object_detection/templates/eraser_ascii_tf.pcd";
+        string template_filename = template_path + template_filenames[req.object_id];
         pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl(new pcl::PointCloud<pcl::PointXYZ>);
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(template_filename, *template_pcl) == -1)
         {
@@ -333,9 +342,35 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
         }
 
         // Register using ICP and broadcast TF
-        icp_registration(object_cluster_pcl, template_pcl);
+        double score = icp_registration(object_cluster_pcl, template_pcl);
+        icp_scores.push_back(score);
+    }
+
+    // Find the object with best ICP score
+    double min_score = 1000;
+    argmin = -1;
+    for (int i = 0; i < icp_scores.size(); i++)
+    {
+        if (icp_scores[i] < min_score)
+        {
+            argmin = i;
+            min_score = icp_scores[i];
+        }
+    }
+
+    cerr << "\nLowest Object Index: " << argmin << " with Score: " << min_score << endl;
+    icp_transform = icp_transforms[argmin];
+
+    if (min_score < icp_fitness_score) {
+        cerr << "ICP Registration Success!\n" << endl;
+        ICP_SUCCESS = true;
         res.success = true;
         return true;
+    } else {
+        cerr << "ICP Registration Failed to Converge within Threshold!\n" << endl;
+        ICP_SUCCESS = false;
+        res.success = false;
+        return false;
     }
 }
 
@@ -352,6 +387,7 @@ int main(int argc, char** argv)
     nh.getParam("input", input_topic);
     nh.getParam("output", output_topic);
     nh.getParam("icp_fitness_score", icp_fitness_score);
+    nh.getParam("template_path", template_path);
 
     // Params defaults
     nh.param<bool>("invert", invert, true);
@@ -366,7 +402,8 @@ int main(int argc, char** argv)
     cout << "Distance Threshold: " << distance_threshold << endl;
     cout << "Input Topic: " << input_topic << endl;
     cout << "Output Topic: " << output_topic << endl;
-    cerr << "ICP Fitness Score:" << icp_fitness_score << endl;
+    cerr << "ICP Fitness Score: " << icp_fitness_score << endl;
+    cerr << "ICP Template Folder: " << template_path << endl;
 
     // Create a ROS subscriber for the input point cloud
     ros::Subscriber sub = nh.subscribe(input_topic, 1, pcl_callback);
