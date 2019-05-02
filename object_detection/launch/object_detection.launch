@@ -18,6 +18,12 @@
         name="object_pose_detection"
         output="screen">
 
+        <!-- Template object folder for ICP -->
+        <param
+            name="template_path"
+            type="string"
+            value="$(find object_detection)/templates/" />
+
         <!-- Set topics and params -->
         <rosparam>
             <!-- invert (default: true): True > Box; False > Ground Plane -->
