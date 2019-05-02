@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(cuboid_detection)
+project(object_detection)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -58,10 +58,11 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Rectangle.msg
-)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -114,10 +115,10 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
- LIBRARIES cuboid_detection
- CATKIN_DEPENDS cv_bridge image_transport pcl_conversions pcl_ros roscpp sensor_msgs rospy std_msgs geometry_msgs message_generation eigen_conversions
- # DEPENDS system_lib
+  INCLUDE_DIRS include
+  LIBRARIES cuboid_detection
+  CATKIN_DEPENDS cv_bridge image_transport pcl_conversions pcl_ros roscpp sensor_msgs rospy std_msgs geometry_msgs message_generation eigen_conversions
+  # DEPENDS system_lib
 )
 
 ###########
@@ -133,7 +134,7 @@ include
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/cuboid_detection.cpp
+#   src/${PROJECT_NAME}/object_detection.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -144,10 +145,8 @@ include
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
-# add_executable(surface_normal_estimation src/surface_normal_estimation.cpp)
-# add_executable(iterative_closest_point src/iterative_closest_point.cpp)
-# add_executable(bbox_filter src/bbox_filter.cpp)
+add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
+add_executable(iterative_closest_point src/iterative_closest_point.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,7 +159,5 @@ include
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
-# target_link_libraries(surface_normal_estimation ${catkin_LIBRARIES})
-# target_link_libraries(iterative_closest_point ${catkin_LIBRARIES})
-# target_link_libraries(bbox_filter ${catkin_LIBRARIES})
+target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
+target_link_libraries(iterative_closest_point ${catkin_LIBRARIES})

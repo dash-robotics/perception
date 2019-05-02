@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <arg name="filename" default="2019-04-09-15-43-49.bag" />
+
+    <!-- Play rosbag file -->
+    <node 
+        pkg="rosbag"
+        type="play"
+        name="player"
+        output="screen"
+        args="--clock --loop --quiet $(find object_detection)/bags/$(arg filename)" />
+
+</launch>

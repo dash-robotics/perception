@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
 
+    <!-- Play rosbag file -->
+    <!-- <include file="$(find cuboid_detection)/launch/play_rosbag.launch">
+        <arg name="filename" value="2019-04-09-15-43-49.bag" />
+    </include> -->
+
+    <!-- Launch the depth camera -->
+    <!-- <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="enable_pointcloud" value="true"/>
+    </include> -->
+
     <!-- Launch Bounding Box Filter -->
     <!-- <include file="$(find cuboid_detection)/launch/bbox_filter.launch"/> -->
     
@@ -29,6 +39,7 @@
             length: 0.2
             width: 0.1
             height: 0.03
+            icp_fitness_score: 0.0004
         </rosparam>
     </node>
 
@@ -47,6 +58,14 @@
             extrinsics: "/camera/extrinsics/depth_to_color"
             output_topic: "/draw_bbox/image"
         </rosparam>
+    </node>
+
+    <!-- Run RVIZ -->
+    <node
+        type="rviz"
+        name="rviz"
+        pkg="rviz"
+        args="-d $(find cuboid_detection)/perception.rviz">
     </node>
 
 </launch>
