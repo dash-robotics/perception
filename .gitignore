@@ -1,4 +1,5 @@
 cuboid_detection/bags/*
+openface2_ros/rosbags/*
 
 .vscode/
 
