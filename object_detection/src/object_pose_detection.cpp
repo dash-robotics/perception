@@ -12,38 +12,38 @@ add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
 target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
 */
 
-#include <ros/ros.h>
 #include "object_detection/boost.h"
+#include <ros/ros.h>
 
 // TF includes
 #include <tf/tf.h>
-#include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
 // Pose includes
-#include <geometry_msgs/Pose.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <geometry_msgs/Pose.h>
 
 // PCL specific includes
-#include <sensor_msgs/PointCloud2.h>
+#include <pcl/ModelCoefficients.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
-#include <pcl/ModelCoefficients.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/segmentation/extract_clusters.h>
 #include <pcl/search/kdtree.h>
-#include <pcl_ros/point_cloud.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/filters/extract_indices.h>
 #include <pcl_ros/filters/passthrough.h>
 #include <pcl_ros/filters/voxel_grid.h>
-#include <pcl_ros/filters/extract_indices.h>
+#include <pcl_ros/point_cloud.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/PointCloud2.h>
 
 // Local includes
 #include "object_detection/ObjectDetection.h"
@@ -71,7 +71,7 @@ string template_cuboid_filename;
 sensor_msgs::PointCloud2 bbox_msg;
 sensor_msgs::PointCloud2 output_msg;
 sensor_msgs::PointCloud2 template_msg;
-tf::TransformListener *listener;
+tf::TransformListener* listener;
 geometry_msgs::Pose pose_msg;
 Eigen::Affine3d pose_transform;
 double dimensions[3];
@@ -89,13 +89,13 @@ void publish_pose(Eigen::Matrix4d H)
     // Set translation
     tf::Vector3 origin;
     origin.setValue(H(0, 3), H(1, 3), H(2, 3));
-    
+
     // Set rotation
     tf::Quaternion quaternion;
     tf::Matrix3x3 rotation_matrix;
-    rotation_matrix.setValue(H(0, 0), H(0, 1), H(0, 2),  
-                             H(1, 0), H(1, 1), H(1, 2),  
-                             H(2, 0), H(2, 1), H(2, 2));
+    rotation_matrix.setValue(H(0, 0), H(0, 1), H(0, 2),
+        H(1, 0), H(1, 1), H(1, 2),
+        H(2, 0), H(2, 1), H(2, 2));
     rotation_matrix.getRotation(quaternion);
 
     // Make tf transform message
@@ -128,25 +128,23 @@ void publish_bounding_box(Eigen::Matrix4d H)
 
     // Create a point cloud from the vertices
     pcl::PointCloud<pcl::PointXYZ> box_cloud;
-    box_cloud.push_back(pcl::PointXYZ(-l/2, -w/2, -h/2));
-    box_cloud.push_back(pcl::PointXYZ(-l/2, -w/2, h/2));
-    box_cloud.push_back(pcl::PointXYZ(-l/2, w/2, -h/2));
-    box_cloud.push_back(pcl::PointXYZ(-l/2, w/2, h/2));
-    box_cloud.push_back(pcl::PointXYZ(l/2, -w/2, -h/2));
-    box_cloud.push_back(pcl::PointXYZ(l/2, -w/2, h/2));
-    box_cloud.push_back(pcl::PointXYZ(l/2, w/2, -h/2));
-    box_cloud.push_back(pcl::PointXYZ(l/2, w/2, h/2));
+    box_cloud.push_back(pcl::PointXYZ(-l / 2, -w / 2, -h / 2));
+    box_cloud.push_back(pcl::PointXYZ(-l / 2, -w / 2, h / 2));
+    box_cloud.push_back(pcl::PointXYZ(-l / 2, w / 2, -h / 2));
+    box_cloud.push_back(pcl::PointXYZ(-l / 2, w / 2, h / 2));
+    box_cloud.push_back(pcl::PointXYZ(l / 2, -w / 2, -h / 2));
+    box_cloud.push_back(pcl::PointXYZ(l / 2, -w / 2, h / 2));
+    box_cloud.push_back(pcl::PointXYZ(l / 2, w / 2, -h / 2));
+    box_cloud.push_back(pcl::PointXYZ(l / 2, w / 2, h / 2));
 
     // Transform point cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::transformPointCloud(box_cloud, *transformed_cloud, H.cast<float>());
 
-    if (FIRST)
-    {
+    if (FIRST) {
         FIRST = false;
         cout << "Bounding Box Points:" << endl;
-        for (int i = 0; i < transformed_cloud->size(); i++)
-        {
+        for (int i = 0; i < transformed_cloud->size(); i++) {
             cout << "X: " << transformed_cloud->points[i].x << " | "
                  << "Y: " << transformed_cloud->points[i].y << " | "
                  << "Z: " << transformed_cloud->points[i].z << endl;
@@ -161,8 +159,7 @@ void publish_bounding_box(Eigen::Matrix4d H)
 
 void icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl)
 {
-    while (1)
-    {
+    while (1) {
         // Point cloud containers
         pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -180,11 +177,11 @@ void icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::PointC
 
         cerr << "ICP Score Before: " << icp.getFitnessScore() << endl;
 
-        if (icp.hasConverged() && icp.getFitnessScore() < icp_fitness_score)
-        {
+        if (icp.hasConverged() && icp.getFitnessScore() < icp_fitness_score) {
             // Display ICP results
             cerr << "\nICP Score: " << icp.getFitnessScore() << endl;
-            cerr << "ICP Transform:\n" << icp_transform << endl;
+            cerr << "ICP Transform:\n"
+                 << icp_transform << endl;
 
             // Convert to ROS data type
             pcl::toROSMsg(*output_cloud, output_msg);
@@ -199,21 +196,21 @@ void pcl_callback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
     // Save the input point cloud to a global variable
     pcl_conversions::toPCL(*input, *input_pcl);
-    if (DEBUG) cerr << "PointCloud before filtering: " << input_pcl->width << " " << input_pcl->height << " data points." << endl;
+    if (DEBUG)
+        cerr << "PointCloud before filtering: " << input_pcl->width << " " << input_pcl->height << " data points." << endl;
 
     // Publish template point cloud
-    if (ICP_SUCCESS)
-    {
+    if (ICP_SUCCESS) {
         icp_pub.publish(output_msg);
         template_msg.header.frame_id = "camera_depth_optical_frame";
         template_pub.publish(template_msg);
         publish_bounding_box(icp_transform);
         publish_pose(icp_transform);
-    } 
+    }
 }
 
-bool service_callback(object_detection::ObjectDetection::Request  &req,
-                      object_detection::ObjectDetection::Response &res)
+bool service_callback(object_detection::ObjectDetection::Request& req,
+    object_detection::ObjectDetection::Response& res)
 {
     // Filter the points in z-axis
     pcl::PCLPointCloud2::Ptr cloud_filtered_ptr_z(new pcl::PCLPointCloud2);
@@ -222,7 +219,8 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pass_z.setFilterFieldName("z");
     pass_z.setFilterLimits(0.0, 0.9);
     pass_z.filter(*cloud_filtered_ptr_z);
-    if (DEBUG) cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z->width << " " << cloud_filtered_ptr_z->height << " data points." << endl;
+    if (DEBUG)
+        cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z->width << " " << cloud_filtered_ptr_z->height << " data points." << endl;
 
     // Filter the points in y-axis
     pcl::PCLPointCloud2::Ptr cloud_filtered_ptr(new pcl::PCLPointCloud2);
@@ -231,7 +229,8 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pass.setFilterFieldName("x");
     pass.setFilterLimits(-0.2, 0.2);
     pass.filter(*cloud_filtered_ptr);
-    if (DEBUG) cerr << "PointCloud after filtering in x-axis: " << cloud_filtered_ptr->width << " " << cloud_filtered_ptr->height << " data points." << endl;
+    if (DEBUG)
+        cerr << "PointCloud after filtering in x-axis: " << cloud_filtered_ptr->width << " " << cloud_filtered_ptr->height << " data points." << endl;
 
     // Downsample the points
     pcl::PCLPointCloud2::Ptr voxel_ptr(new pcl::PCLPointCloud2);
@@ -249,7 +248,7 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_voxel_ptr(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(*voxel_ptr, *pcl_voxel_ptr);
 
-    // Segmentation paramters    
+    // Segmentation paramters
     seg.setOptimizeCoefficients(true);
     seg.setModelType(pcl::SACMODEL_PLANE);
     seg.setMethodType(pcl::SAC_RANSAC);
@@ -267,7 +266,8 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     extract.setIndices(inliers);
     extract.setNegative(invert);
     extract.filter(*plane_cloud_ptr);
-    if (DEBUG) cerr << "PointCloud representing the planar component: " << plane_cloud_ptr->width << " " << plane_cloud_ptr->height << " data points." << endl;
+    if (DEBUG)
+        cerr << "PointCloud representing the planar component: " << plane_cloud_ptr->width << " " << plane_cloud_ptr->height << " data points." << endl;
 
     // Additional filtering
     pcl::PCLPointCloud2::Ptr cloud_filtered_ptr_z2(new pcl::PCLPointCloud2);
@@ -276,7 +276,8 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     pass_z2.setFilterFieldName("z");
     pass_z2.setFilterLimits(0.0, 0.7);
     pass_z2.filter(*cloud_filtered_ptr_z2);
-    if (DEBUG) cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z2->width << " " << cloud_filtered_ptr->height << " data points." << endl;
+    if (DEBUG)
+        cerr << "PointCloud after filtering: " << cloud_filtered_ptr_z2->width << " " << cloud_filtered_ptr->height << " data points." << endl;
 
     // Create the KdTree object for the search method of the extraction
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
@@ -302,8 +303,7 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
     int obj_id = 1;
 
     // What is this?
-    for (vector<pcl::PointIndices>::const_iterator it = object_cluster_indices.begin(); it != object_cluster_indices.end(); ++it)
-    {
+    for (vector<pcl::PointIndices>::const_iterator it = object_cluster_indices.begin(); it != object_cluster_indices.end(); ++it) {
         // Create a pcl object to hold the extracted cluster
         pcl::PCLPointCloud2::Ptr object_cluster(new pcl::PCLPointCloud2);
         pcl::ExtractIndices<pcl::PCLPointCloud2> obj_extract;
@@ -316,17 +316,16 @@ bool service_callback(object_detection::ObjectDetection::Request  &req,
         pcl::PointCloud<pcl::PointXYZ>::Ptr object_cluster_pcl(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::fromPCLPointCloud2(*object_cluster, *object_cluster_pcl);
         // pcl::io::savePCDFile("/home/heethesh/ROS-Workspaces/dash_ws/src/perception/object_detection/templates/clamp.pcd", *object_cluster_pcl, true);
-        
+
         // Convert to ROS data type
         sensor_msgs::PointCloud2 output;
         pcl_conversions::fromPCL(*object_cluster, output);
         pcl_pub.publish(output);
 
         // Read template point cloud
-        string template_filename = "/home/heethesh/ROS-Workspaces/dash_ws/src/perception/object_detection/templates/eraser_ascii_tf.pcd";
+        string template_filename = "/home/karmesh/dash_ws/src/perception/object_detection/templates/eraser_ascii_tf.pcd";
         pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl(new pcl::PointCloud<pcl::PointXYZ>);
-        if (pcl::io::loadPCDFile<pcl::PointXYZ>(template_filename, *template_pcl) == -1)
-        {
+        if (pcl::io::loadPCDFile<pcl::PointXYZ>(template_filename, *template_pcl) == -1) {
             PCL_ERROR("Couldn't read the template PCL file");
             res.success = false;
             return false;
@@ -407,7 +406,7 @@ int main(int argc, char** argv)
 
 //         // Convert to ROS data type
 //         pcl::toROSMsg(*template_cuboid, template_msg);
-        
+
 //         // Publish template point cloud
 //         template_msg.header.frame_id = "cuboid_frame";
 //         template_pub.publish(template_msg);

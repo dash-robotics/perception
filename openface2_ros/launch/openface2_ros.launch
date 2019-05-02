@@ -1,9 +1,9 @@
 <launch>
 
-  <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
+  <!--include file="$(find realsense2_camera)/launch/rs_camera.launch"/-->
 
   <arg name="image_topic" default="/camera/color/image_raw" />
-  <arg name="publish_viz" default="true" />
+  <arg name="publish_viz" default="False" />
 
   <node pkg="openface2_ros" name="openface2_ros" type="openface2_ros" output="screen">
       <param name="image_topic" value="$(arg image_topic)" type="str"/>
