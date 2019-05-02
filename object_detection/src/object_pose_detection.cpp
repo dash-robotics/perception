@@ -14,6 +14,7 @@ target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
 
 #include <ros/ros.h>
 #include "object_detection/boost.h"
+#include <visualization_msgs/Marker.h>
 
 // TF includes
 #include <tf/tf.h>
@@ -57,6 +58,7 @@ ros::Publisher coef_pub;
 ros::Publisher bbox_pub;
 ros::Publisher template_pub;
 ros::Publisher pose_pub;
+ros::Publisher marker_pub;
 
 // Globals
 bool invert;
@@ -75,7 +77,7 @@ sensor_msgs::PointCloud2 template_msg;
 tf::TransformListener *listener;
 geometry_msgs::Pose pose_msg;
 Eigen::Affine3d pose_transform;
-double dimensions[3];
+double dimensions[] = {0.1, 0.02, 0.02};
 double icp_fitness_score;
 pcl::PCLPointCloud2::Ptr input_pcl(new pcl::PCLPointCloud2);
 
@@ -89,6 +91,48 @@ bool DEBUG = false;
 bool ICP_SUCCESS = false;
 bool FIRST = true;
 bool POSE_FLAG = false;
+
+void publish_grasp_marker(geometry_msgs::Pose& p)
+{
+    visualization_msgs::Marker marker;
+    // Set the frame ID and timestamp.  See the TF tutorials for information on these.
+    marker.header.frame_id = "camera_depth_optical_frame";
+    marker.header.stamp = ros::Time::now();
+
+    // Set the namespace and id for this marker
+    marker.ns = "grasp_pose";
+    marker.id = 0;
+
+    // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
+    marker.type = visualization_msgs::Marker::CUBE;
+
+    // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
+    marker.action = visualization_msgs::Marker::ADD;
+
+    // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
+    marker.pose.position.x = p.position.x;
+    marker.pose.position.y = p.position.y;
+    marker.pose.position.z = p.position.z;
+    marker.pose.orientation.x = p.orientation.x;
+    marker.pose.orientation.y = p.orientation.y;
+    marker.pose.orientation.z = p.orientation.z;
+    marker.pose.orientation.w = p.orientation.w;
+
+    // Set the scale of the marker -- 1x1x1 here means 1m on a side
+    marker.scale.x = dimensions[0];
+    marker.scale.y = dimensions[1];
+    marker.scale.z = dimensions[2];
+
+    // Set the color -- be sure to set alpha to something non-zero!
+    marker.color.r = 1.0f;
+    marker.color.g = 0.0f;
+    marker.color.b = 0.0f;
+    marker.color.a = 0.5f;
+
+    // Publish the marker
+    marker.lifetime = ros::Duration();
+    marker_pub.publish(marker);
+}
 
 void publish_pose(Eigen::Matrix4d H)
 {
@@ -118,6 +162,9 @@ void publish_pose(Eigen::Matrix4d H)
     p.orientation.y = quaternion.y();
     p.orientation.z = quaternion.z();
     p.orientation.w = quaternion.w();
+
+    // Publish visualization marker
+    publish_grasp_marker(p);
 
     // Broadcast the transforms
     static tf::TransformBroadcaster br;
@@ -211,7 +258,7 @@ void pcl_callback(const sensor_msgs::PointCloud2ConstPtr& input)
         icp_pub.publish(output_msg);
         template_msg.header.frame_id = "camera_depth_optical_frame";
         template_pub.publish(template_msg);
-        publish_bounding_box(icp_transform);
+        // publish_bounding_box(icp_transform);
         publish_pose(icp_transform);
     } 
 }
@@ -415,6 +462,7 @@ int main(int argc, char** argv)
     bbox_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/bbox_points", 1);
     template_pub = nh.advertise<sensor_msgs::PointCloud2>("/icp/template", 1);
     pose_pub = nh.advertise<geometry_msgs::Pose>("/icp/pose", 1);
+    marker_pub = nh.advertise<visualization_msgs::Marker>("object_pose_detection/grasp_pose", 1);
 
     // Spin
     ros::spin();
