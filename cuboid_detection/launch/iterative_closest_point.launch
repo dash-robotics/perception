@@ -61,11 +61,11 @@
     </node>
 
     <!-- Run RVIZ -->
-    <node
+    <!--node
         type="rviz"
         name="rviz"
         pkg="rviz"
         args="-d $(find cuboid_detection)/perception.rviz">
-    </node>
+    </node-->
 
 </launch>

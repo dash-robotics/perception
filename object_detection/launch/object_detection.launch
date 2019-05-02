@@ -2,26 +2,42 @@
 <launch>
 
     <!-- Play rosbag file -->
-    <include file="$(find object_detection)/launch/play_rosbag.launch">
+    <!-- <include file="$(find object_detection)/launch/play_rosbag.launch">
         <arg name="filename" value="all-01.bag" />
-    </include>
+    </include> -->
 
     <!-- Launch the depth camera -->
     <!-- <include file="$(find realsense2_camera)/launch/rs_camera.launch">
         <arg name="enable_pointcloud" value="true"/>
     </include> -->
 
-    <!-- Launch Bounding Box Filter -->
-    <!-- <include file="$(find object_detection)/launch/bbox_filter.launch"/> -->
-    
-    <!-- Launch surface normal estimation -->
-    <!-- <include file="$(find object_detection)/launch/surface_normal_estimation.launch"/> -->
+    <!-- Launch object pose detection -->
+    <node
+        pkg="object_detection"
+        type="object_pose_detection"
+        name="object_pose_detection"
+        output="screen">
 
-    <!-- Launch ground plane segmentation -->
-    <include file="$(find object_detection)/launch/ground_plane_segmentation.launch"/>
+        <!-- Template object folder for ICP -->
+        <param
+            name="template_path"
+            type="string"
+            value="$(find object_detection)/templates/" />
 
-    <!-- Launch ICP -->
-    <!-- <include file="$(find object_detection)/launch/iterative_closest_point.launch"/> -->
+        <!-- Set topics and params -->
+        <rosparam>
+            <!-- invert (default: true): True > Box; False > Ground Plane -->
+            invert: true
+            <!-- voxel_size (default: 0.01): Lower the value, denser the point cloud, more CPU -->
+            voxel_size: 0.001
+            <!-- distance_threshold (default: 0.01): Lower the value, more of box + table noise -->
+            distance_threshold: 0.01
+            <!-- Topics -->
+            input: "/camera/depth/color/points"
+            output: "/object_pose_detection/points"
+            icp_fitness_score: 0.0004
+        </rosparam>
+    </node>
 
     <!-- Display the 3D bounding box -->
     <!-- <node
@@ -40,11 +56,11 @@
     </node> -->
 
     <!-- Run RVIZ -->
-    <node
+    <!-- <node
         type="rviz"
         name="rviz"
         pkg="rviz"
         args="-d $(find object_detection)/perception.rviz">
-    </node>
+    </node> -->
 
 </launch>

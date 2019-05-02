@@ -1,0 +1,83 @@
+############# eraser #############
+transforms: 
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1556767535
+        nsecs: 764839887
+      frame_id: "/camera_depth_optical_frame"
+    child_frame_id: "/cuboid_frame"
+    transform: 
+      translation: 
+        x: 0.1296
+        y: -0.472
+        z: -0.3316
+      rotation: 
+        x: -0.348770910586
+        y: -0.134146176401
+        z: -0.0488837796102
+        w: 0.926268876395
+
+############# clamp #############
+transforms: 
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1556768483
+        nsecs: 404467105
+      frame_id: "/camera_depth_optical_frame"
+    child_frame_id: "/cuboid_frame"
+    transform: 
+      translation: 
+        x: 0.204
+        y: -0.4852
+        z: -0.2876
+      rotation: 
+        x: -0.346943985104
+        y: -0.240332830829
+        z: -0.0924573196869
+        w: 0.90184347071
+
+############# screwdriver #############
+transforms: 
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1556768818
+        nsecs:  17858028
+      frame_id: "/camera_depth_optical_frame"
+    child_frame_id: "/cuboid_frame"
+    transform: 
+      translation: 
+        x: 0.1252
+        y: -0.4764
+        z: -0.336
+      rotation: 
+        x: -0.347475176114
+        y: -0.158859631239
+        z: -0.059857013673
+        w: 0.92219399123
+
+############# marker #############
+transforms: 
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1556769570
+        nsecs: 477070093
+      frame_id: "/camera_depth_optical_frame"
+    child_frame_id: "/cuboid_frame"
+    transform: 
+      translation: 
+        x: -0.0108
+        y: -0.4808
+        z: -0.3096
+      rotation: 
+        x: -0.342422592276
+        y: 0.0607978149491
+        z: 0.0275301284879
+        w: 0.937172602044
