@@ -181,10 +181,14 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
 
     for(int i = 0; i < 3; i++)
     {
-        if (i == 0)
+        if (i == 0){
+            std::cerr<<"Finding the normal plane parallel to the table top"<<std::endl;
             planes[i] = getNormal(cloud_ptr, pcl::SACMODEL_PERPENDICULAR_PLANE, plane_normal, invert);
-        else
+        }
+        else{
+            std::cerr<<"Finding the normal plane perpendicular to the table top"<<std::endl;
             planes[i] = getNormal(cloud_ptr, pcl::SACMODEL_PARALLEL_PLANE, plane_normal, invert);
+        }
         cloud_ptr = planes[i].leftover_pc;
         normals[i] << planes[i].plane_normal.values[0], planes[i].plane_normal.values[1], planes[i].plane_normal.values[2];
     }
@@ -220,7 +224,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& input)
           normals[2](2), normals[1](2), normals[0](2), centroid(2),
           0, 0, 0, 1;
     
-    if (debug) std::cerr << Rt << std::endl;
+    // if (debug) std::cerr << Rt << std::endl;
     convert_eigen_to_tf(Rt);
 
     // Convert to ROS data type
