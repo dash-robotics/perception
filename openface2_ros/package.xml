@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<package>
+  <name>openface2_ros</name>
+  <version>1.0.0</version>
+  <description>The openface2_ros package</description>
+
+  <maintainer email="dito.cahya@bristol.ac.uk">Dito Cahya</maintainer>
+  <license>Apache 2</license>
+
+  <author email="dito.cahya@bristol.ac.uk">Dito Cahya</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>tf2</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>tf2</run_depend>
+  <run_depend>tf2_ros</run_depend>
+
+
+  <export>
+
+  </export>
+</package>
