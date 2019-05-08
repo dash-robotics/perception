@@ -1,5 +1,7 @@
 cuboid_detection/bags/*
 openface2_ros/rosbags/*
+handpose_ros/src/weights/*
+
 
 .vscode/
 

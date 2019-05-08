@@ -495,7 +495,7 @@ namespace openface2_ros
 
 										for ( auto it = aus_reg.begin(); it != aus_reg.end(); it++ )
 										{										
-											if(it->first.compare("AU02")==0 && it->second > 2.5)
+											if(it->first.compare("AU02")==0 && it->second > 3)
 											{
 												face.head_pose.position.z = transform.transform.translation.z;
 												head_pose_pub_.publish(face.head_pose);
