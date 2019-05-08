@@ -12,6 +12,7 @@ add_executable(ground_plane_segmentation src/ground_plane_segmentation.cpp)
 target_link_libraries(ground_plane_segmentation ${catkin_LIBRARIES})
 */
 
+#include <cmath>
 #include "object_detection/boost.h"
 #include <visualization_msgs/Marker.h>
 
@@ -76,9 +77,10 @@ sensor_msgs::PointCloud2 template_msg;
 tf::TransformListener* listener;
 geometry_msgs::Pose pose_msg;
 Eigen::Affine3d pose_transform;
-double dimensions[] = { 0.02, 0.15, 0.02 };
+double dimensions[] = { 0.02, 0.02, 0.15 };
 double icp_fitness_score;
 pcl::PCLPointCloud2::Ptr input_pcl(new pcl::PCLPointCloud2);
+vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> output_pcls;
 
 // Template paths
 string template_path;
@@ -207,7 +209,7 @@ void publish_bounding_box(Eigen::Matrix4d H)
     bbox_pub.publish(bbox_msg);
 }
 
-double icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl)
+double icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr object_pcl, pcl::PointCloud<pcl::PointXYZ>::Ptr template_pcl)
 {
     int max_iter = 0;
     while (1) {
@@ -216,7 +218,7 @@ double icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::Poin
 
         // Run ICP
         pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-        icp.setInputSource(input_pcl);
+        icp.setInputSource(object_pcl);
         icp.setInputTarget(template_pcl);
         icp.setMaximumIterations(5000);
         icp.setTransformationEpsilon(1e-9);
@@ -227,7 +229,7 @@ double icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::Poin
         Eigen::Matrix4d icp_transform_local = icp.getFinalTransformation().cast<double>().inverse();
         icp_transforms.push_back(icp_transform_local);
 
-        cerr << "ICP Score Before: " << icp.getFitnessScore() << endl;
+        // cerr << "ICP Score Before: " << icp.getFitnessScore() << endl;
         max_iter++;
 
         if ((icp.hasConverged() && icp.getFitnessScore() < icp_fitness_score) || (max_iter > 10)) {
@@ -237,8 +239,8 @@ double icp_registration(pcl::PointCloud<pcl::PointXYZ>::Ptr input_pcl, pcl::Poin
                  << icp_transform_local << endl;
 
             // Convert to ROS data type
-            pcl::toROSMsg(*output_cloud, output_msg);
             pcl::toROSMsg(*template_pcl, template_msg);
+            output_pcls.push_back(output_cloud);
             return icp.getFitnessScore();
         }
     }
@@ -253,6 +255,10 @@ void pcl_callback(const sensor_msgs::PointCloud2ConstPtr& input)
 
     // Publish template point cloud
     if (ICP_SUCCESS and argmin != -1) {
+        // Convert to ROS data type
+        pcl::toROSMsg(*output_pcls[argmin], output_msg);
+
+        // Publish topics
         icp_pub.publish(output_msg);
         template_msg.header.frame_id = "camera_depth_optical_frame";
         template_pub.publish(template_msg);
@@ -362,6 +368,8 @@ bool service_callback(object_detection::ObjectDetection::Request& req,
     // Find the best registered object
     int obj_id = req.object_id;
     vector<double> icp_scores;
+    vector<double> diff_scores;
+    output_pcls.clear();
     icp_transforms.clear();
     ICP_SUCCESS = false;
 
@@ -396,29 +404,36 @@ bool service_callback(object_detection::ObjectDetection::Request& req,
         // Register using ICP and broadcast TF
         double score = icp_registration(object_cluster_pcl, template_pcl);
         icp_scores.push_back(score);
+
+        // Check number of points
+        // cerr << "Object Points: " << (int)object_cluster_pcl->size() << endl;
+        // cerr << "Template Points: " << (int)template_pcl->size() << endl;
+        cerr << "Difference Score: " << abs((int)object_cluster_pcl->size() - (int)template_pcl->size()) << endl;
+        diff_scores.push_back(abs((int)object_cluster_pcl->size() - (int)template_pcl->size()));
     }
 
     // Find the object with best ICP score
     double min_score = 1000;
     argmin = -1;
-    for (int i = 0; i < icp_scores.size(); i++) {
-        if (icp_scores[i] < min_score) {
+    for (int i = 0; i < diff_scores.size(); i++) {
+        if (diff_scores[i] < min_score) {
             argmin = i;
-            min_score = icp_scores[i];
+            min_score = diff_scores[i];
         }
     }
 
     cerr << "\nLowest Object Index: " << argmin << " with Score: " << min_score << endl;
     icp_transform = icp_transforms[argmin];
 
-    if (min_score < icp_fitness_score) {
-        cerr << "ICP Registration Success!\n"
+    // if (min_score < icp_fitness_score) {
+    if (min_score < 250) {
+        cerr << "Object Registration Success!\n"
              << endl;
         ICP_SUCCESS = true;
         res.success = true;
         return true;
     } else {
-        cerr << "ICP Registration Failed to Converge within Threshold!\n"
+        cerr << "Object Registration Failed to Converge within Threshold!\n"
              << endl;
         ICP_SUCCESS = false;
         res.success = false;
